@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,10 +11,14 @@ import { Calculator, Globe, TrendingUp } from 'lucide-react';
 export interface SalaryData {
   country: string;
   state: string;
+  stateId: string;
+  city: string;
+  cityId: string;
+  locality: string;
+  localityId: string;
   isNative: boolean;
   grossSalary: number;
   currency: string;
-  city: string;
 }
 
 export interface TaxData {
@@ -25,6 +28,17 @@ export interface TaxData {
   medicare: number;
   totalTax: number;
   takeHomeSalary: number;
+  brackets?: Array<{
+    min: number;
+    max: number | null;
+    rate: number;
+    taxPaid: number;
+  }>;
+  cpp?: number;
+  ei?: number;
+  ni?: number;
+  medicareLevy?: number;
+  cess?: number;
 }
 
 export interface ExpenseData {
@@ -41,10 +55,14 @@ const Index = () => {
   const [salaryData, setSalaryData] = useState<SalaryData>({
     country: '',
     state: '',
+    stateId: '',
+    city: '',
+    cityId: '',
+    locality: '',
+    localityId: '',
     isNative: true,
     grossSalary: 0,
     currency: 'USD',
-    city: ''
   });
 
   const [taxData, setTaxData] = useState<TaxData>({
@@ -67,6 +85,7 @@ const Index = () => {
   });
 
   const [activeTab, setActiveTab] = useState('basics');
+  const isSalaryValid = salaryData.grossSalary > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
@@ -118,6 +137,7 @@ const Index = () => {
                 salaryData={salaryData} 
                 setSalaryData={setSalaryData}
                 onNext={() => setActiveTab('taxes')}
+                salaryValid={isSalaryValid}
               />
               <SalaryInput 
                 salaryData={salaryData} 

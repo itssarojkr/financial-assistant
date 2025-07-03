@@ -1,10 +1,10 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Circle, TrendingUp } from 'lucide-react';
 import { SalaryData } from '@/pages/Index';
+import { useState } from 'react';
 
 interface SalaryInputProps {
   salaryData: SalaryData;
@@ -44,6 +44,7 @@ const currencySymbols: { [key: string]: string } = {
 };
 
 const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) => {
+  const [error, setError] = useState<string | null>(null);
   const currencySymbol = currencySymbols[salaryData.currency] || salaryData.currency;
 
   const formatNumber = (num: number) => {
@@ -56,6 +57,11 @@ const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) 
       ...salaryData,
       grossSalary: numericValue
     });
+    if (numericValue <= 0) {
+      setError('Please enter a valid salary greater than 0.');
+    } else {
+      setError(null);
+    }
   };
 
   return (
@@ -82,9 +88,10 @@ const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) 
               placeholder="0"
               value={salaryData.grossSalary ? formatNumber(salaryData.grossSalary) : ''}
               onChange={(e) => handleSalaryChange(e.target.value)}
-              className="pl-12 text-lg font-medium"
+              className={`pl-12 text-lg font-medium ${error ? 'border-red-500' : ''}`}
             />
           </div>
+          {error && <div className="text-red-600 text-sm mt-1">{error}</div>}
         </div>
 
         <div className="space-y-2">

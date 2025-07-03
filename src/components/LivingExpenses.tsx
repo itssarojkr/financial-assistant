@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -235,7 +234,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
           Living Expenses
         </CardTitle>
         <CardDescription>
-          Estimated monthly expenses for {salaryData.city}, {salaryData.country}
+          Estimated monthly expenses for {salaryData.locality}, {salaryData.city}, {salaryData.country}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

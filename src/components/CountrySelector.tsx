@@ -1,156 +1,125 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, MapPin, User } from 'lucide-react';
+import { Globe, User } from 'lucide-react';
 import { SalaryData } from '@/pages/Index';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CountrySelectorProps {
   salaryData: SalaryData;
   setSalaryData: (data: SalaryData) => void;
   onNext: () => void;
+  salaryValid: boolean;
 }
 
-const countries = [
-  // North America
-  { code: 'US', name: 'United States', currency: 'USD', region: 'North America', states: ['California', 'New York', 'Texas', 'Florida', 'Illinois', 'Pennsylvania', 'Ohio', 'Georgia', 'North Carolina', 'Michigan'] },
-  { code: 'CA', name: 'Canada', currency: 'CAD', region: 'North America', states: ['Ontario', 'British Columbia', 'Alberta', 'Quebec', 'Manitoba', 'Saskatchewan'] },
-  { code: 'MX', name: 'Mexico', currency: 'MXN', region: 'North America', states: ['Mexico City', 'Jalisco', 'Nuevo León', 'Puebla', 'Guanajuato', 'Veracruz'] },
-
-  // Europe
-  { code: 'UK', name: 'United Kingdom', currency: 'GBP', region: 'Europe', states: ['England', 'Scotland', 'Wales', 'Northern Ireland'] },
-  { code: 'DE', name: 'Germany', currency: 'EUR', region: 'Europe', states: ['Bavaria', 'North Rhine-Westphalia', 'Baden-Württemberg', 'Berlin', 'Hamburg', 'Hesse'] },
-  { code: 'FR', name: 'France', currency: 'EUR', region: 'Europe', states: ['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Nouvelle-Aquitaine', 'Occitanie', 'Auvergne-Rhône-Alpes'] },
-  { code: 'NL', name: 'Netherlands', currency: 'EUR', region: 'Europe', states: ['North Holland', 'South Holland', 'Utrecht', 'North Brabant', 'Gelderland'] },
-  { code: 'CH', name: 'Switzerland', currency: 'CHF', region: 'Europe', states: ['Zurich', 'Geneva', 'Basel', 'Bern', 'Vaud', 'Aargau'] },
-  { code: 'ES', name: 'Spain', currency: 'EUR', region: 'Europe', states: ['Madrid', 'Catalonia', 'Andalusia', 'Valencia', 'Basque Country', 'Galicia'] },
-  { code: 'IT', name: 'Italy', currency: 'EUR', region: 'Europe', states: ['Lombardy', 'Lazio', 'Veneto', 'Tuscany', 'Piedmont', 'Emilia-Romagna'] },
-  { code: 'SE', name: 'Sweden', currency: 'SEK', region: 'Europe', states: ['Stockholm', 'Västra Götaland', 'Skåne', 'Uppsala', 'Värmland'] },
-  { code: 'NO', name: 'Norway', currency: 'NOK', region: 'Europe', states: ['Oslo', 'Viken', 'Rogaland', 'Møre og Romsdal', 'Nordland'] },
-  { code: 'DK', name: 'Denmark', currency: 'DKK', region: 'Europe', states: ['Capital Region', 'Zealand', 'Central Jutland', 'North Jutland', 'Southern Denmark'] },
-  { code: 'PL', name: 'Poland', currency: 'PLN', region: 'Europe', states: ['Mazowieckie', 'Śląskie', 'Wielkopolskie', 'Małopolskie', 'Dolnośląskie'] },
-  { code: 'CZ', name: 'Czech Republic', currency: 'CZK', region: 'Europe', states: ['Prague', 'Central Bohemia', 'South Moravia', 'North Moravia', 'Plzen'] },
-
-  // Asia-Pacific
-  { code: 'IN', name: 'India', currency: 'INR', region: 'Asia-Pacific', states: ['Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu', 'Gujarat', 'West Bengal', 'Telangana', 'Haryana'] },
-  { code: 'CN', name: 'China', currency: 'CNY', region: 'Asia-Pacific', states: ['Beijing', 'Shanghai', 'Guangdong', 'Jiangsu', 'Zhejiang', 'Sichuan', 'Shandong'] },
-  { code: 'JP', name: 'Japan', currency: 'JPY', region: 'Asia-Pacific', states: ['Tokyo', 'Osaka', 'Kanagawa', 'Aichi', 'Saitama', 'Chiba'] },
-  { code: 'SG', name: 'Singapore', currency: 'SGD', region: 'Asia-Pacific', states: ['Central Singapore', 'East Singapore', 'North Singapore', 'Northeast Singapore', 'West Singapore'] },
-  { code: 'KR', name: 'South Korea', currency: 'KRW', region: 'Asia-Pacific', states: ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju'] },
-  { code: 'TH', name: 'Thailand', currency: 'THB', region: 'Asia-Pacific', states: ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya', 'Chiang Rai', 'Krabi'] },
-  { code: 'MY', name: 'Malaysia', currency: 'MYR', region: 'Asia-Pacific', states: ['Kuala Lumpur', 'Selangor', 'Penang', 'Johor', 'Sabah', 'Sarawak'] },
-  { code: 'PH', name: 'Philippines', currency: 'PHP', region: 'Asia-Pacific', states: ['Metro Manila', 'Cebu', 'Davao', 'Iloilo', 'Cagayan de Oro', 'Bacolod'] },
-  { code: 'AU', name: 'Australia', currency: 'AUD', region: 'Asia-Pacific', states: ['New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia', 'Tasmania'] },
-  { code: 'NZ', name: 'New Zealand', currency: 'NZD', region: 'Asia-Pacific', states: ['Auckland', 'Wellington', 'Canterbury', 'Waikato', 'Bay of Plenty'] },
-
-  // Middle East & Gulf
-  { code: 'AE', name: 'United Arab Emirates', currency: 'AED', region: 'Middle East & Gulf', states: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah'] },
-  { code: 'SA', name: 'Saudi Arabia', currency: 'SAR', region: 'Middle East & Gulf', states: ['Riyadh', 'Makkah', 'Eastern Province', 'Asir', 'Qassim', 'Tabuk'] },
-  { code: 'QA', name: 'Qatar', currency: 'QAR', region: 'Middle East & Gulf', states: ['Doha', 'Al Rayyan', 'Al Wakrah', 'Al Khor', 'Al Shamal'] },
-  { code: 'KW', name: 'Kuwait', currency: 'KWD', region: 'Middle East & Gulf', states: ['Capital', 'Hawalli', 'Farwaniya', 'Mubarak Al-Kabeer', 'Ahmadi'] },
-  { code: 'BH', name: 'Bahrain', currency: 'BHD', region: 'Middle East & Gulf', states: ['Capital', 'Muharraq', 'Northern', 'Southern'] },
-
-  // Latin America
-  { code: 'BR', name: 'Brazil', currency: 'BRL', region: 'Latin America', states: ['São Paulo', 'Rio de Janeiro', 'Minas Gerais', 'Bahia', 'Paraná', 'Rio Grande do Sul'] },
-
-  // Africa
-  { code: 'ZA', name: 'South Africa', currency: 'ZAR', region: 'Africa', states: ['Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape', 'Limpopo'] },
-
-  // Other
-  { code: 'RU', name: 'Russia', currency: 'RUB', region: 'Europe', states: ['Moscow', 'St. Petersburg', 'Moscow Oblast', 'Krasnodar Krai', 'Sverdlovsk Oblast'] }
-];
-
-const cityDatabase: { [key: string]: { [key: string]: string[] } } = {
-  'United States': {
-    'California': ['San Francisco', 'Los Angeles', 'San Diego', 'Sacramento', 'San Jose'],
-    'New York': ['New York City', 'Buffalo', 'Rochester', 'Syracuse', 'Albany'],
-    'Texas': ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth'],
-    'Florida': ['Miami', 'Orlando', 'Tampa', 'Jacksonville', 'Fort Lauderdale'],
-    'Illinois': ['Chicago', 'Aurora', 'Rockford', 'Joliet', 'Naperville']
-  },
-  'Canada': {
-    'Ontario': ['Toronto', 'Ottawa', 'Hamilton', 'London', 'Kitchener'],
-    'British Columbia': ['Vancouver', 'Victoria', 'Burnaby', 'Richmond', 'Surrey'],
-    'Alberta': ['Calgary', 'Edmonton', 'Red Deer', 'Lethbridge', 'Medicine Hat'],
-    'Quebec': ['Montreal', 'Quebec City', 'Laval', 'Gatineau', 'Longueuil']
-  },
-  'United Kingdom': {
-    'England': ['London', 'Manchester', 'Birmingham', 'Leeds', 'Liverpool'],
-    'Scotland': ['Edinburgh', 'Glasgow', 'Aberdeen', 'Dundee', 'Stirling'],
-    'Wales': ['Cardiff', 'Swansea', 'Newport', 'Wrexham', 'Barry'],
-    'Northern Ireland': ['Belfast', 'Derry', 'Lisburn', 'Newtownabbey', 'Bangor']
-  },
-  'Germany': {
-    'Bavaria': ['Munich', 'Nuremberg', 'Augsburg', 'Würzburg', 'Regensburg'],
-    'North Rhine-Westphalia': ['Cologne', 'Düsseldorf', 'Dortmund', 'Essen', 'Duisburg'],
-    'Baden-Württemberg': ['Stuttgart', 'Mannheim', 'Karlsruhe', 'Freiburg', 'Heidelberg'],
-    'Berlin': ['Berlin']
-  },
-  'India': {
-    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad'],
-    'Karnataka': ['Bangalore', 'Mysore', 'Hubli', 'Mangalore', 'Belgaum'],
-    'Delhi': ['New Delhi', 'Delhi', 'Gurgaon', 'Noida', 'Faridabad'],
-    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem'],
-    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
-    'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri']
-  },
-  'China': {
-    'Beijing': ['Beijing'],
-    'Shanghai': ['Shanghai'],
-    'Guangdong': ['Guangzhou', 'Shenzhen', 'Dongguan', 'Foshan', 'Zhongshan'],
-    'Jiangsu': ['Nanjing', 'Suzhou', 'Wuxi', 'Changzhou', 'Nantong'],
-    'Zhejiang': ['Hangzhou', 'Ningbo', 'Wenzhou', 'Jiaxing', 'Huzhou'],
-    'Sichuan': ['Chengdu', 'Mianyang', 'Deyang', 'Nanchong', 'Yibin']
-  },
-  'United Arab Emirates': {
-    'Dubai': ['Dubai'],
-    'Abu Dhabi': ['Abu Dhabi', 'Al Ain'],
-    'Sharjah': ['Sharjah'],
-    'Ajman': ['Ajman'],
-    'Ras Al Khaimah': ['Ras Al Khaimah']
-  },
-  'Saudi Arabia': {
-    'Riyadh': ['Riyadh'],
-    'Makkah': ['Jeddah', 'Mecca', 'Taif'],
-    'Eastern Province': ['Dammam', 'Dhahran', 'Al Khobar', 'Jubail'],
-    'Asir': ['Abha', 'Khamis Mushait'],
-    'Qassim': ['Buraydah', 'Unaizah']
-  },
-  'Singapore': {
-    'Central Singapore': ['Singapore City', 'Marina Bay', 'Chinatown'],
-    'East Singapore': ['Bedok', 'Tampines', 'Pasir Ris'],
-    'North Singapore': ['Woodlands', 'Yishun', 'Sembawang']
-  },
-  'South Korea': {
-    'Seoul': ['Seoul', 'Gangnam', 'Hongdae', 'Itaewon'],
-    'Busan': ['Busan', 'Haeundae', 'Seomyeon'],
-    'Incheon': ['Incheon', 'Songdo']
-  },
-  'Japan': {
-    'Tokyo': ['Tokyo', 'Shibuya', 'Shinjuku', 'Ginza'],
-    'Osaka': ['Osaka', 'Namba', 'Umeda'],
-    'Kanagawa': ['Yokohama', 'Kawasaki']
-  }
+type Country = {
+  id: number;
+  code: string;
+  name: string;
+  currency: string;
+  region: string;
 };
 
-const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalaryData, onNext }) => {
-  const selectedCountry = countries.find(c => c.name === salaryData.country);
+type State = {
+  id: number;
+  country_id: number;
+  name: string;
+};
+
+type City = {
+  id: number;
+  state_id: number;
+  name: string;
+};
+
+type Locality = {
+  id: number;
+  city_id: number;
+  name: string;
+};
+
+const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalaryData, onNext, salaryValid }) => {
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [localities, setLocalities] = useState<Locality[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [cityInput, setCityInput] = useState(salaryData.city);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [localityInput, setLocalityInput] = useState(salaryData.locality || '');
+  const [showLocalitySuggestions, setShowLocalitySuggestions] = useState(false);
+  const [loadingCountries, setLoadingCountries] = useState(true);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingLocalities, setLoadingLocalities] = useState(false);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch countries on mount
+  useEffect(() => {
+    setLoadingCountries(true);
+    supabase.from('countries').select('*').then(({ data, error }) => {
+      if (!error && data) setCountries(data);
+      setLoadingCountries(false);
+    });
+  }, []);
+
+  // Fetch states when country changes
+  useEffect(() => {
+    if (!salaryData.country) {
+      setStates([]);
+      return;
+    }
+    const country = countries.find(c => c.name === salaryData.country);
+    if (!country) return;
+    setLoadingStates(true);
+    supabase.from('states').select('*').eq('country_id', country.id).then(({ data, error }) => {
+      if (!error && data) setStates(data);
+      setLoadingStates(false);
+    });
+  }, [salaryData.country, countries]);
+
+  // Fetch cities when state changes
+  useEffect(() => {
+    if (!salaryData.state) {
+      setCities([]);
+      return;
+    }
+    const state = states.find(s => s.name === salaryData.state);
+    if (!state) return;
+    setLoadingCities(true);
+    supabase.from('cities').select('*').eq('state_id', state.id).then(({ data, error }) => {
+      if (!error && data) setCities(data);
+      setLoadingCities(false);
+    });
+  }, [salaryData.state, states]);
+
+  // Fetch localities when city changes
+  useEffect(() => {
+    if (!salaryData.city) {
+      setLocalities([]);
+      return;
+    }
+    const city = cities.find(c => c.name === salaryData.city);
+    if (!city) return;
+    setLoadingLocalities(true);
+    supabase.from('localities').select('*').eq('city_id', city.id).then(({ data, error }) => {
+      if (!error && data) setLocalities(data);
+      setLoadingLocalities(false);
+    });
+  }, [salaryData.city, cities]);
 
   const getCitySuggestions = () => {
-    if (!salaryData.country || !salaryData.state || !cityInput) return [];
-    
-    const countryData = cityDatabase[salaryData.country];
-    if (!countryData || !countryData[salaryData.state]) return [];
-    
-    return countryData[salaryData.state].filter(city => 
-      city.toLowerCase().includes(cityInput.toLowerCase())
-    );
+    if (!cityInput) return [];
+    return cities.filter(city => city.name.toLowerCase().includes(cityInput.toLowerCase()));
+  };
+
+  const getLocalitySuggestions = () => {
+    if (!localityInput) return [];
+    return localities.filter(locality => locality.name.toLowerCase().includes(localityInput.toLowerCase()));
   };
 
   const handleCountryChange = (countryName: string) => {
@@ -161,49 +130,84 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
         country: countryName,
         currency: country.currency,
         state: '',
-        city: ''
+        city: '',
+        locality: ''
       });
       setCityInput('');
+      setLocalityInput('');
     }
     validateForm();
   };
 
-  const handleStateChange = (state: string) => {
+  const handleStateChange = (stateId: string) => {
+    const selectedState = states.find(s => s.id.toString() === stateId);
     setSalaryData({
       ...salaryData,
-      state,
-      city: ''
+      state: selectedState ? selectedState.name : '',
+      stateId: stateId,
+      city: '',
+      cityId: '',
+      locality: '',
+      localityId: ''
     });
     setCityInput('');
+    setLocalityInput('');
     validateForm();
   };
 
-  const handleCityChange = (city: string) => {
-    setCityInput(city);
+  const handleCityChange = (cityName: string, cityId: string) => {
+    setCityInput(cityName);
     setSalaryData({
       ...salaryData,
-      city
+      city: cityName,
+      cityId,
+      locality: '',
+      localityId: ''
     });
-    setShowSuggestions(false);
+    setShowCitySuggestions(false);
+    setLocalityInput('');
     validateForm();
+    if (cityInputRef.current) cityInputRef.current.blur();
   };
 
   const handleCityInputChange = (value: string) => {
     setCityInput(value);
     setSalaryData({
       ...salaryData,
-      city: value
+      city: value,
+      cityId: '',
+      locality: '',
+      localityId: ''
     });
-    setShowSuggestions(value.length > 0);
+    setShowCitySuggestions(value.length > 0);
+    setLocalityInput('');
+    validateForm();
+  };
+
+  const handleLocalityChange = (localityName: string) => {
+    setLocalityInput(localityName);
+    setSalaryData({
+      ...salaryData,
+      locality: localityName
+    });
+    setShowLocalitySuggestions(false);
+    validateForm();
+  };
+
+  const handleLocalityInputChange = (value: string) => {
+    setLocalityInput(value);
+    setSalaryData({
+      ...salaryData,
+      locality: value
+    });
+    setShowLocalitySuggestions(value.length > 0);
     validateForm();
   };
 
   const validateForm = () => {
-    const isValid = salaryData.country && salaryData.state && cityInput.trim();
+    const isValid = salaryData.country && salaryData.state && cityInput.trim() && localityInput.trim();
     setIsFormValid(!!isValid);
   };
-
-  const suggestions = getCitySuggestions();
 
   // Group countries by region
   const groupedCountries = countries.reduce((acc, country) => {
@@ -212,7 +216,10 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
     }
     acc[country.region].push(country);
     return acc;
-  }, {} as { [key: string]: typeof countries });
+  }, {} as { [key: string]: Country[] });
+
+  const citySuggestions = getCitySuggestions();
+  const localitySuggestions = getLocalitySuggestions();
 
   return (
     <Card className="h-fit">
@@ -230,7 +237,7 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
           <Label htmlFor="country">Country</Label>
           <Select value={salaryData.country} onValueChange={handleCountryChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a country" />
+              <SelectValue placeholder={loadingCountries ? 'Loading countries...' : 'Select a country'} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(groupedCountries).map(([region, regionCountries]) => (
@@ -249,17 +256,17 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
           </Select>
         </div>
 
-        {selectedCountry && (
+        {salaryData.country && (
           <div className="space-y-2">
             <Label htmlFor="state">State/Province</Label>
-            <Select value={salaryData.state} onValueChange={handleStateChange}>
+            <Select value={salaryData.stateId} onValueChange={handleStateChange}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a state/province" />
+                <SelectValue placeholder={loadingStates ? 'Loading states...' : 'Select a state/province'} />
               </SelectTrigger>
               <SelectContent>
-                {selectedCountry.states.map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state}
+                {states.map((state) => (
+                  <SelectItem key={state.id} value={state.id.toString()}>
+                    {state.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -272,22 +279,49 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
             <Label htmlFor="city">City</Label>
             <Input
               id="city"
-              placeholder="Enter your city"
+              placeholder={loadingCities ? 'Loading cities...' : 'Enter your city'}
               value={cityInput}
               onChange={(e) => handleCityInputChange(e.target.value)}
-              onFocus={() => setShowSuggestions(cityInput.length > 0)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onFocus={() => setShowCitySuggestions(cityInput.length > 0)}
+              onBlur={() => setTimeout(() => setShowCitySuggestions(false), 200)}
+              ref={cityInputRef}
             />
-            
-            {showSuggestions && suggestions.length > 0 && (
+            {showCitySuggestions && citySuggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 z-10 bg-white border border-gray-200 rounded-md shadow-lg max-h-32 overflow-y-auto">
-                {suggestions.map((city, index) => (
+                {citySuggestions.map((city) => (
                   <div
-                    key={index}
+                    key={city.id}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    onClick={() => handleCityChange(city)}
+                    onClick={() => handleCityChange(city.name, city.id.toString())}
                   >
-                    {city}
+                    {city.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {salaryData.city && (
+          <div className="space-y-2 relative">
+            <Label htmlFor="locality">Locality</Label>
+            <Input
+              id="locality"
+              placeholder={loadingLocalities ? 'Loading localities...' : 'Enter your locality'}
+              value={localityInput}
+              onChange={(e) => handleLocalityInputChange(e.target.value)}
+              onFocus={() => setShowLocalitySuggestions(localityInput.length > 0)}
+              onBlur={() => setTimeout(() => setShowLocalitySuggestions(false), 200)}
+            />
+            {showLocalitySuggestions && localitySuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-10 bg-white border border-gray-200 rounded-md shadow-lg max-h-32 overflow-y-auto">
+                {localitySuggestions.map((locality) => (
+                  <div
+                    key={locality.id}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onClick={() => handleLocalityChange(locality.name)}
+                  >
+                    {locality.name}
                   </div>
                 ))}
               </div>
@@ -315,13 +349,16 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
           </div>
         )}
 
-        <Button 
-          onClick={onNext} 
-          className="w-full" 
-          disabled={!isFormValid}
+        <Button
+          className="mt-6 w-full"
+          onClick={onNext}
+          disabled={!salaryValid}
         >
-          Continue to Salary Input
+          Continue
         </Button>
+        {!salaryValid && (
+          <div className="text-red-500 text-sm mt-2">Please enter a valid salary to continue.</div>
+        )}
       </CardContent>
     </Card>
   );
