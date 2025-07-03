@@ -19,7 +19,11 @@ const currencySymbols: { [key: string]: string } = {
   AUD: 'A$',
   JPY: '¥',
   SGD: 'S$',
-  CHF: 'CHF'
+  CHF: 'CHF',
+  INR: '₹',
+  CNY: '¥',
+  AED: 'د.إ',
+  SAR: '﷼'
 };
 
 const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) => {
@@ -81,6 +85,10 @@ const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) 
               <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
               <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
               <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
+              <SelectItem value="INR">INR - Indian Rupee</SelectItem>
+              <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
+              <SelectItem value="AED">AED - UAE Dirham</SelectItem>
+              <SelectItem value="SAR">SAR - Saudi Riyal</SelectItem>
             </SelectContent>
           </Select>
         </div>
