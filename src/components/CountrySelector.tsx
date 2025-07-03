@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,20 +15,52 @@ interface CountrySelectorProps {
 }
 
 const countries = [
-  { code: 'US', name: 'United States', currency: 'USD', states: ['California', 'New York', 'Texas', 'Florida', 'Illinois'] },
-  { code: 'CA', name: 'Canada', currency: 'CAD', states: ['Ontario', 'British Columbia', 'Alberta', 'Quebec'] },
-  { code: 'UK', name: 'United Kingdom', currency: 'GBP', states: ['England', 'Scotland', 'Wales', 'Northern Ireland'] },
-  { code: 'DE', name: 'Germany', currency: 'EUR', states: ['Bavaria', 'North Rhine-Westphalia', 'Baden-Württemberg', 'Berlin'] },
-  { code: 'FR', name: 'France', currency: 'EUR', states: ['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Nouvelle-Aquitaine'] },
-  { code: 'AU', name: 'Australia', currency: 'AUD', states: ['New South Wales', 'Victoria', 'Queensland', 'Western Australia'] },
-  { code: 'JP', name: 'Japan', currency: 'JPY', states: ['Tokyo', 'Osaka', 'Kyoto', 'Yokohama'] },
-  { code: 'SG', name: 'Singapore', currency: 'SGD', states: ['Central Singapore', 'East Singapore', 'North Singapore'] },
-  { code: 'CH', name: 'Switzerland', currency: 'CHF', states: ['Zurich', 'Geneva', 'Basel', 'Bern'] },
-  { code: 'NL', name: 'Netherlands', currency: 'EUR', states: ['North Holland', 'South Holland', 'Utrecht', 'North Brabant'] },
-  { code: 'IN', name: 'India', currency: 'INR', states: ['Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu', 'Gujarat', 'West Bengal'] },
-  { code: 'CN', name: 'China', currency: 'CNY', states: ['Beijing', 'Shanghai', 'Guangdong', 'Jiangsu', 'Zhejiang', 'Sichuan'] },
-  { code: 'AE', name: 'United Arab Emirates', currency: 'AED', states: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah'] },
-  { code: 'SA', name: 'Saudi Arabia', currency: 'SAR', states: ['Riyadh', 'Makkah', 'Eastern Province', 'Asir', 'Qassim'] }
+  // North America
+  { code: 'US', name: 'United States', currency: 'USD', region: 'North America', states: ['California', 'New York', 'Texas', 'Florida', 'Illinois', 'Pennsylvania', 'Ohio', 'Georgia', 'North Carolina', 'Michigan'] },
+  { code: 'CA', name: 'Canada', currency: 'CAD', region: 'North America', states: ['Ontario', 'British Columbia', 'Alberta', 'Quebec', 'Manitoba', 'Saskatchewan'] },
+  { code: 'MX', name: 'Mexico', currency: 'MXN', region: 'North America', states: ['Mexico City', 'Jalisco', 'Nuevo León', 'Puebla', 'Guanajuato', 'Veracruz'] },
+
+  // Europe
+  { code: 'UK', name: 'United Kingdom', currency: 'GBP', region: 'Europe', states: ['England', 'Scotland', 'Wales', 'Northern Ireland'] },
+  { code: 'DE', name: 'Germany', currency: 'EUR', region: 'Europe', states: ['Bavaria', 'North Rhine-Westphalia', 'Baden-Württemberg', 'Berlin', 'Hamburg', 'Hesse'] },
+  { code: 'FR', name: 'France', currency: 'EUR', region: 'Europe', states: ['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Nouvelle-Aquitaine', 'Occitanie', 'Auvergne-Rhône-Alpes'] },
+  { code: 'NL', name: 'Netherlands', currency: 'EUR', region: 'Europe', states: ['North Holland', 'South Holland', 'Utrecht', 'North Brabant', 'Gelderland'] },
+  { code: 'CH', name: 'Switzerland', currency: 'CHF', region: 'Europe', states: ['Zurich', 'Geneva', 'Basel', 'Bern', 'Vaud', 'Aargau'] },
+  { code: 'ES', name: 'Spain', currency: 'EUR', region: 'Europe', states: ['Madrid', 'Catalonia', 'Andalusia', 'Valencia', 'Basque Country', 'Galicia'] },
+  { code: 'IT', name: 'Italy', currency: 'EUR', region: 'Europe', states: ['Lombardy', 'Lazio', 'Veneto', 'Tuscany', 'Piedmont', 'Emilia-Romagna'] },
+  { code: 'SE', name: 'Sweden', currency: 'SEK', region: 'Europe', states: ['Stockholm', 'Västra Götaland', 'Skåne', 'Uppsala', 'Värmland'] },
+  { code: 'NO', name: 'Norway', currency: 'NOK', region: 'Europe', states: ['Oslo', 'Viken', 'Rogaland', 'Møre og Romsdal', 'Nordland'] },
+  { code: 'DK', name: 'Denmark', currency: 'DKK', region: 'Europe', states: ['Capital Region', 'Zealand', 'Central Jutland', 'North Jutland', 'Southern Denmark'] },
+  { code: 'PL', name: 'Poland', currency: 'PLN', region: 'Europe', states: ['Mazowieckie', 'Śląskie', 'Wielkopolskie', 'Małopolskie', 'Dolnośląskie'] },
+  { code: 'CZ', name: 'Czech Republic', currency: 'CZK', region: 'Europe', states: ['Prague', 'Central Bohemia', 'South Moravia', 'North Moravia', 'Plzen'] },
+
+  // Asia-Pacific
+  { code: 'IN', name: 'India', currency: 'INR', region: 'Asia-Pacific', states: ['Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu', 'Gujarat', 'West Bengal', 'Telangana', 'Haryana'] },
+  { code: 'CN', name: 'China', currency: 'CNY', region: 'Asia-Pacific', states: ['Beijing', 'Shanghai', 'Guangdong', 'Jiangsu', 'Zhejiang', 'Sichuan', 'Shandong'] },
+  { code: 'JP', name: 'Japan', currency: 'JPY', region: 'Asia-Pacific', states: ['Tokyo', 'Osaka', 'Kanagawa', 'Aichi', 'Saitama', 'Chiba'] },
+  { code: 'SG', name: 'Singapore', currency: 'SGD', region: 'Asia-Pacific', states: ['Central Singapore', 'East Singapore', 'North Singapore', 'Northeast Singapore', 'West Singapore'] },
+  { code: 'KR', name: 'South Korea', currency: 'KRW', region: 'Asia-Pacific', states: ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju'] },
+  { code: 'TH', name: 'Thailand', currency: 'THB', region: 'Asia-Pacific', states: ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya', 'Chiang Rai', 'Krabi'] },
+  { code: 'MY', name: 'Malaysia', currency: 'MYR', region: 'Asia-Pacific', states: ['Kuala Lumpur', 'Selangor', 'Penang', 'Johor', 'Sabah', 'Sarawak'] },
+  { code: 'PH', name: 'Philippines', currency: 'PHP', region: 'Asia-Pacific', states: ['Metro Manila', 'Cebu', 'Davao', 'Iloilo', 'Cagayan de Oro', 'Bacolod'] },
+  { code: 'AU', name: 'Australia', currency: 'AUD', region: 'Asia-Pacific', states: ['New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia', 'Tasmania'] },
+  { code: 'NZ', name: 'New Zealand', currency: 'NZD', region: 'Asia-Pacific', states: ['Auckland', 'Wellington', 'Canterbury', 'Waikato', 'Bay of Plenty'] },
+
+  // Middle East & Gulf
+  { code: 'AE', name: 'United Arab Emirates', currency: 'AED', region: 'Middle East & Gulf', states: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah'] },
+  { code: 'SA', name: 'Saudi Arabia', currency: 'SAR', region: 'Middle East & Gulf', states: ['Riyadh', 'Makkah', 'Eastern Province', 'Asir', 'Qassim', 'Tabuk'] },
+  { code: 'QA', name: 'Qatar', currency: 'QAR', region: 'Middle East & Gulf', states: ['Doha', 'Al Rayyan', 'Al Wakrah', 'Al Khor', 'Al Shamal'] },
+  { code: 'KW', name: 'Kuwait', currency: 'KWD', region: 'Middle East & Gulf', states: ['Capital', 'Hawalli', 'Farwaniya', 'Mubarak Al-Kabeer', 'Ahmadi'] },
+  { code: 'BH', name: 'Bahrain', currency: 'BHD', region: 'Middle East & Gulf', states: ['Capital', 'Muharraq', 'Northern', 'Southern'] },
+
+  // Latin America
+  { code: 'BR', name: 'Brazil', currency: 'BRL', region: 'Latin America', states: ['São Paulo', 'Rio de Janeiro', 'Minas Gerais', 'Bahia', 'Paraná', 'Rio Grande do Sul'] },
+
+  // Africa
+  { code: 'ZA', name: 'South Africa', currency: 'ZAR', region: 'Africa', states: ['Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape', 'Limpopo'] },
+
+  // Other
+  { code: 'RU', name: 'Russia', currency: 'RUB', region: 'Europe', states: ['Moscow', 'St. Petersburg', 'Moscow Oblast', 'Krasnodar Krai', 'Sverdlovsk Oblast'] }
 ];
 
 const cityDatabase: { [key: string]: { [key: string]: string[] } } = {
@@ -87,6 +118,21 @@ const cityDatabase: { [key: string]: { [key: string]: string[] } } = {
     'Eastern Province': ['Dammam', 'Dhahran', 'Al Khobar', 'Jubail'],
     'Asir': ['Abha', 'Khamis Mushait'],
     'Qassim': ['Buraydah', 'Unaizah']
+  },
+  'Singapore': {
+    'Central Singapore': ['Singapore City', 'Marina Bay', 'Chinatown'],
+    'East Singapore': ['Bedok', 'Tampines', 'Pasir Ris'],
+    'North Singapore': ['Woodlands', 'Yishun', 'Sembawang']
+  },
+  'South Korea': {
+    'Seoul': ['Seoul', 'Gangnam', 'Hongdae', 'Itaewon'],
+    'Busan': ['Busan', 'Haeundae', 'Seomyeon'],
+    'Incheon': ['Incheon', 'Songdo']
+  },
+  'Japan': {
+    'Tokyo': ['Tokyo', 'Shibuya', 'Shinjuku', 'Ginza'],
+    'Osaka': ['Osaka', 'Namba', 'Umeda'],
+    'Kanagawa': ['Yokohama', 'Kawasaki']
   }
 };
 
@@ -159,6 +205,15 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
 
   const suggestions = getCitySuggestions();
 
+  // Group countries by region
+  const groupedCountries = countries.reduce((acc, country) => {
+    if (!acc[country.region]) {
+      acc[country.region] = [];
+    }
+    acc[country.region].push(country);
+    return acc;
+  }, {} as { [key: string]: typeof countries });
+
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -178,10 +233,17 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
               <SelectValue placeholder="Select a country" />
             </SelectTrigger>
             <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country.code} value={country.name}>
-                  {country.name}
-                </SelectItem>
+              {Object.entries(groupedCountries).map(([region, regionCountries]) => (
+                <div key={region}>
+                  <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                    {region}
+                  </div>
+                  {regionCountries.map((country) => (
+                    <SelectItem key={country.code} value={country.name}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </div>
               ))}
             </SelectContent>
           </Select>

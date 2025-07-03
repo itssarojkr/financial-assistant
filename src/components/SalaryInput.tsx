@@ -23,7 +23,24 @@ const currencySymbols: { [key: string]: string } = {
   INR: '₹',
   CNY: '¥',
   AED: 'د.إ',
-  SAR: '﷼'
+  SAR: '﷼',
+  KRW: '₩',
+  THB: '฿',
+  MYR: 'RM',
+  PHP: '₱',
+  QAR: '﷼',
+  KWD: 'د.ك',
+  BHD: '.د.ب',
+  SEK: 'kr',
+  NOK: 'kr',
+  DKK: 'kr',
+  PLN: 'zł',
+  CZK: 'Kč',
+  BRL: 'R$',
+  MXN: '$',
+  RUB: '₽',
+  ZAR: 'R',
+  NZD: 'NZ$'
 };
 
 const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) => {
@@ -77,18 +94,58 @@ const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) 
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                Major Currencies
+              </div>
               <SelectItem value="USD">USD - US Dollar</SelectItem>
               <SelectItem value="EUR">EUR - Euro</SelectItem>
               <SelectItem value="GBP">GBP - British Pound</SelectItem>
-              <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-              <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
               <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-              <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
-              <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
-              <SelectItem value="INR">INR - Indian Rupee</SelectItem>
               <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
+              <SelectItem value="INR">INR - Indian Rupee</SelectItem>
+              
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                North America
+              </div>
+              <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+              <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
+              
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                Europe
+              </div>
+              <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
+              <SelectItem value="SEK">SEK - Swedish Krona</SelectItem>
+              <SelectItem value="NOK">NOK - Norwegian Krone</SelectItem>
+              <SelectItem value="DKK">DKK - Danish Krone</SelectItem>
+              <SelectItem value="PLN">PLN - Polish Zloty</SelectItem>
+              <SelectItem value="CZK">CZK - Czech Koruna</SelectItem>
+              <SelectItem value="RUB">RUB - Russian Ruble</SelectItem>
+              
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                Asia-Pacific
+              </div>
+              <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
+              <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+              <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
+              <SelectItem value="KRW">KRW - South Korean Won</SelectItem>
+              <SelectItem value="THB">THB - Thai Baht</SelectItem>
+              <SelectItem value="MYR">MYR - Malaysian Ringgit</SelectItem>
+              <SelectItem value="PHP">PHP - Philippine Peso</SelectItem>
+              
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                Middle East & Gulf
+              </div>
               <SelectItem value="AED">AED - UAE Dirham</SelectItem>
               <SelectItem value="SAR">SAR - Saudi Riyal</SelectItem>
+              <SelectItem value="QAR">QAR - Qatari Riyal</SelectItem>
+              <SelectItem value="KWD">KWD - Kuwaiti Dinar</SelectItem>
+              <SelectItem value="BHD">BHD - Bahraini Dinar</SelectItem>
+              
+              <div className="px-2 py-1.5 text-sm font-semibold text-gray-600 bg-gray-50">
+                Other
+              </div>
+              <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+              <SelectItem value="ZAR">ZAR - South African Rand</SelectItem>
             </SelectContent>
           </Select>
         </div>
