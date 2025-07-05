@@ -138,7 +138,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
     let foodBase = 400;
     let transportBase = 150;
     let healthcareBase = 300;
-    let otherBase = 300;
+    const otherBase = 300;
 
     // Adjust based on country and city
     switch (country) {

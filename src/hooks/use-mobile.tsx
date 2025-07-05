@@ -1,19 +1,33 @@
-import * as React from "react"
+import { useState, useEffect } from 'react';
+import { MobileService } from '@/services/mobileService';
 
-const MOBILE_BREAKPOINT = 768
+export const useMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deviceInfo, setDeviceInfo] = useState<any>(null);
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  useEffect(() => {
+    const initializeMobile = async () => {
+      await MobileService.initialize();
+      const mobile = MobileService.isMobile();
+      setIsMobile(mobile);
+      
+      if (mobile) {
+        const info = await MobileService.getDeviceInfo();
+        setDeviceInfo(info);
+      }
+      
+      setIsLoading(false);
+    };
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+    initializeMobile();
+  }, []);
 
-  return !!isMobile
-}
+  return {
+    isMobile,
+    isLoading,
+    deviceInfo,
+    hapticFeedback: MobileService.hapticFeedback,
+    vibrate: MobileService.vibrate
+  };
+};

@@ -2,13 +2,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Circle, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Circle, TrendingUp, FolderOpen } from 'lucide-react';
 import { SalaryData } from '@/pages/Index';
 import { useState } from 'react';
 
 interface SalaryInputProps {
   salaryData: SalaryData;
   setSalaryData: (data: SalaryData) => void;
+  onLoadCalculation?: () => void;
+  showLoadButton?: boolean;
 }
 
 const currencySymbols: { [key: string]: string } = {
@@ -43,7 +46,12 @@ const currencySymbols: { [key: string]: string } = {
   NZD: 'NZ$'
 };
 
-const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) => {
+const SalaryInput: React.FC<SalaryInputProps> = ({ 
+  salaryData, 
+  setSalaryData, 
+  onLoadCalculation,
+  showLoadButton = false 
+}) => {
   const [error, setError] = useState<string | null>(null);
   const currencySymbol = currencySymbols[salaryData.currency] || salaryData.currency;
 
@@ -185,6 +193,20 @@ const SalaryInput: React.FC<SalaryInputProps> = ({ salaryData, setSalaryData }) 
             <strong>Tip:</strong> Enter your gross salary before any deductions. We'll calculate your take-home pay after taxes and other deductions.
           </p>
         </div>
+
+        {/* Action Buttons */}
+        {showLoadButton && onLoadCalculation && (
+          <div className="flex gap-3 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={onLoadCalculation}
+              className="flex items-center gap-2 flex-1"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Load Saved Calculation
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
