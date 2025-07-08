@@ -159,7 +159,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         setSelectedCountryId(countryId);
         setSalaryData({
           ...salaryData,
-          country: countryId,
+          country: selectedCountry.name,
           countryCode: selectedCountry.code,
           currency: selectedCountry.currency,
           // Reset location-specific fields when country changes
@@ -233,9 +233,13 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   // Set initial country ID when salaryData.country changes
   useEffect(() => {
     if (salaryData.country && !selectedCountryId) {
-      setSelectedCountryId(salaryData.country);
+      // Find the country by name and set the ID
+      const country = countriesData?.find(c => c.name === salaryData.country);
+      if (country) {
+        setSelectedCountryId(country.id.toString());
+      }
     }
-  }, [salaryData.country, selectedCountryId]);
+  }, [salaryData.country, selectedCountryId, countriesData]);
 
   if (countriesError) {
     return (
@@ -258,7 +262,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         <div className="space-y-2">
           <Label htmlFor="country-select">Country/Region *</Label>
           <Select
-            value={salaryData.country}
+            value={selectedCountryId}
             onValueChange={handleCountryChange}
             disabled={disabled || countriesLoading}
           >
@@ -276,7 +280,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         </div>
 
         {/* State/Province Selection */}
-        {salaryData.country && (
+        {selectedCountryId && (
           <div className="space-y-2">
             <Label htmlFor="state-select">State/Province</Label>
             <Select
@@ -311,13 +315,24 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <SelectValue placeholder={citiesLoading ? "Loading cities..." : "Select a city"} />
               </SelectTrigger>
               <SelectContent>
-                {citiesData?.map((city) => (
-                  <SelectItem key={city.id} value={city.id.toString()}>
-                    {city.name}
-                  </SelectItem>
-                ))}
+                {citiesData && citiesData.length > 0 ? (
+                  citiesData.map((city) => (
+                    <SelectItem key={city.id} value={city.id.toString()}>
+                      {city.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    No cities available for this state
+                  </div>
+                )}
               </SelectContent>
             </Select>
+            {citiesData && citiesData.length === 0 && !citiesLoading && (
+              <p className="text-xs text-muted-foreground">
+                Cities data not available. You can proceed with just the state selection.
+              </p>
+            )}
           </div>
         )}
 
@@ -334,13 +349,24 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <SelectValue placeholder={localitiesLoading ? "Loading localities..." : "Select a district/neighborhood"} />
               </SelectTrigger>
               <SelectContent>
-                {localitiesData?.map((locality) => (
-                  <SelectItem key={locality.id} value={locality.id.toString()}>
-                    {locality.name}
-                  </SelectItem>
-                ))}
+                {localitiesData && localitiesData.length > 0 ? (
+                  localitiesData.map((locality) => (
+                    <SelectItem key={locality.id} value={locality.id.toString()}>
+                      {locality.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    No localities available for this city
+                  </div>
+                )}
               </SelectContent>
             </Select>
+            {localitiesData && localitiesData.length === 0 && !localitiesLoading && (
+              <p className="text-xs text-muted-foreground">
+                Locality data not available. You can proceed with just the city selection.
+              </p>
+            )}
           </div>
         )}
 

@@ -31,7 +31,7 @@ export const ENVIRONMENT = {
  * API constants
  */
 export const API = {
-  BASE_URL: process.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
   TIMEOUT: 30000, // 30 seconds
   RETRIES: 3,
   RATE_LIMIT: {

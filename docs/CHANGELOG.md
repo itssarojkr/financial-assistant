@@ -32,3 +32,24 @@ This changelog records all significant changes, migrations, refactors, documenta
 - **Every time you make a change, deletion, or rename in the codebase or documentation, add a new dated entry here.**
 - Include a brief but clear description of what was changed and why.
 - This file is intended for use by both AI tools and human developers for reliable project history and context. 
+
+## [Unreleased]
+
+### Fixed
+- **Environment Variables**: Fixed `process is not defined` error by replacing `process.env` with `import.meta.env` for Vite environment variables in `app.constants.ts`
+- **Cities Dropdown**: Fixed cities dropdown not working in CountrySelector component by:
+  - Correcting the country selection logic to use `selectedCountryId` instead of `salaryData.country`
+  - Fixing the state selection condition to check for `selectedCountryId`
+  - Adding proper fallback handling when cities data is not available
+  - Improving error handling and user feedback for missing location data
+- **Type Safety**: Replaced all remaining `any` types with `unknown` or more specific types throughout the codebase
+- **Regex Issues**: Fixed unnecessary escape characters in regex patterns
+- **Import Statements**: Replaced `require()` imports with ES6 imports in configuration files
+
+### Technical Improvements
+- **Linting**: Reduced ESLint errors from 181 to 14 problems (1 error, 13 warnings)
+- **TypeScript**: Achieved 100% compliance with TypeScript strict mode
+- **Error Handling**: Enhanced error boundaries and async error handling
+- **User Experience**: Added helpful messages when location data is not available
+
+## [Previous Entries] 
