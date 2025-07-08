@@ -58,7 +58,7 @@ export interface QuickAction {
   icon: string;
   color: string;
   action: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
   requiresAuth?: boolean;
   shortcut?: string;
 }
@@ -954,9 +954,9 @@ export class WidgetsService {
   }
 
   /**
-   * Get widget templates
+   * Get available widget templates
    */
-  getWidgetTemplates(): Omit<Widget, 'id' | 'position' | 'order'>[] {
+  getAvailableTemplates(): Omit<Widget, 'id' | 'position' | 'order'>[] {
     return [
       {
         type: 'expense_summary',

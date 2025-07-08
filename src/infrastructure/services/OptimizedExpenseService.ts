@@ -252,18 +252,22 @@ export class OptimizedExpenseService {
       let periodKey: string;
       
       switch (period) {
-        case 'month':
+        case 'month': {
           periodKey = date.toISOString().substring(0, 7);
           break;
-        case 'quarter':
+        }
+        case 'quarter': {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           periodKey = `${date.getFullYear()}-Q${quarter}`;
           break;
-        case 'year':
+        }
+        case 'year': {
           periodKey = date.getFullYear().toString();
           break;
-        default:
+        }
+        default: {
           periodKey = date.toISOString().substring(0, 7);
+        }
       }
       
       if (!grouped[periodKey]) {

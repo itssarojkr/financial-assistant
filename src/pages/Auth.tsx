@@ -28,7 +28,7 @@ export const Auth: React.FC<AuthProps> = ({ mode: propMode }) => {
   React.useEffect(() => {
     if (user) {
       // If redirected from a protected route, go back to intended destination
-      const from = (location.state as any)?.from?.pathname || '/';
+      const from = (location.state as unknown as { from?: { pathname: string }})?.from?.pathname || '/';
       navigate(from, { replace: true });
     }
   }, [user, navigate, location]);
@@ -37,6 +37,10 @@ export const Auth: React.FC<AuthProps> = ({ mode: propMode }) => {
     if (mode === 'signup') {
       // Stay on the page to show email verification message
     }
+  };
+
+  const handleError = (error: unknown) => {
+    console.error('Authentication error:', error);
   };
 
   const handleSwitchToLogin = () => {

@@ -156,14 +156,14 @@ export const DEFAULT_CURRENCY_OPTIONS: CurrencyFormatOptions = {
 /**
  * Helper to validate enum values
  */
-function validNotation(value: any): 'standard' | 'scientific' | 'engineering' | 'compact' | undefined {
-  return ['standard', 'scientific', 'engineering', 'compact'].includes(value) ? value : undefined;
+function validNotation(value: unknown): 'standard' | 'scientific' | 'engineering' | 'compact' | undefined {
+  return ['standard', 'scientific', 'engineering', 'compact'].includes(value as string) ? value as 'standard' | 'scientific' | 'engineering' | 'compact' : undefined;
 }
-function validStyle(value: any): 'decimal' | 'currency' | undefined {
-  return ['decimal', 'currency'].includes(value) ? value : undefined;
+function validStyle(value: unknown): 'decimal' | 'currency' | undefined {
+  return ['decimal', 'currency'].includes(value as string) ? value as 'decimal' | 'currency' : undefined;
 }
 function validSignDisplay(value: unknown): 'auto' | 'never' | 'always' | 'exceptZero' | undefined {
-  return typeof value === 'string' && ['auto', 'never', 'always', 'exceptZero'].includes(value)
+  return typeof value === 'string' && ['auto', 'never', 'always', 'exceptZero'].includes(value as string)
     ? value as 'auto' | 'never' | 'always' | 'exceptZero'
     : undefined;
 }
@@ -346,7 +346,7 @@ export function parseCurrency(
   const currencyInfo = SUPPORTED_CURRENCIES[currency.toUpperCase()] || SUPPORTED_CURRENCIES.USD;
   
   // Remove currency symbol and other non-numeric characters except separators
-  let cleaned = value.replace(/[^\d.,\-]/g, '');
+  let cleaned = value.replace(/[^\d.,-]/g, '');
   
   // Handle negative numbers
   const isNegative = cleaned.includes('-');

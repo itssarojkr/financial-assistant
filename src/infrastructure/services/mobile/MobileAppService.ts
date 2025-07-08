@@ -285,48 +285,164 @@ export class MobileAppService {
   }
 
   /**
-   * Get app information
+   * Get device information
    */
-  async getAppInfo(): Promise<any> {
+  async getDeviceInfo(): Promise<DeviceInfo> {
     try {
-      const info = await App.getInfo();
+      const info = await Device.getInfo();
       return {
-        ...info,
-        features: {
-          notifications: this.config.enableNotifications,
-          haptics: this.config.enableHaptics,
-          offlineSync: this.config.enableOfflineSync,
-          camera: this.config.enableCamera,
-          biometricAuth: this.config.enableBiometricAuth,
-          voiceInput: this.config.enableVoiceInput,
-          advancedSearch: this.config.enableAdvancedSearch,
-          widgets: this.config.enableWidgets,
-          themeSupport: this.config.enableThemeSupport,
-          accessibility: this.config.enableAccessibility,
-          performanceMonitoring: this.config.enablePerformanceMonitoring,
-          securityFeatures: this.config.enableSecurityFeatures
-        }
+        name: info.name,
+        model: info.model,
+        platform: info.platform,
+        operatingSystem: info.operatingSystem,
+        osVersion: info.osVersion,
+        manufacturer: info.manufacturer,
+        isVirtual: info.isVirtual,
+        webViewVersion: info.webViewVersion
       };
     } catch (error) {
-      console.error('Failed to get app info:', error);
-      return null;
+      console.error('Failed to get device info:', error);
+      return {
+        name: 'Unknown',
+        model: 'Unknown',
+        platform: 'unknown',
+        operatingSystem: 'unknown',
+        osVersion: 'unknown',
+        manufacturer: 'Unknown',
+        isVirtual: false,
+        webViewVersion: 'unknown'
+      };
     }
   }
 
   /**
-   * Get current app state
+   * Get network status
    */
-  async getAppState(): Promise<any> {
+  async getNetworkStatus(): Promise<NetworkStatus> {
+    try {
+      const status = await Network.getStatus();
+      return {
+        connected: status.connected,
+        connectionType: status.connectionType
+      };
+    } catch (error) {
+      console.error('Failed to get network status:', error);
+      return {
+        connected: false,
+        connectionType: 'unknown'
+      };
+    }
+  }
+
+  /**
+   * Get battery information
+   */
+  async getBatteryInfo(): Promise<BatteryInfo> {
+    try {
+      const battery = await Device.getBatteryInfo();
+      return {
+        batteryLevel: battery.batteryLevel,
+        isCharging: battery.isCharging
+      };
+    } catch (error) {
+      console.error('Failed to get battery info:', error);
+      return {
+        batteryLevel: 0,
+        isCharging: false
+      };
+    }
+  }
+
+  /**
+   * Get app information
+   */
+  async getAppInfo(): Promise<AppInfo> {
+    try {
+      const info = await App.getInfo();
+      return {
+        name: info.name,
+        id: info.id,
+        version: info.version,
+        build: info.build
+      };
+    } catch (error) {
+      console.error('Failed to get app info:', error);
+      return {
+        name: 'Financial Assistant',
+        id: 'com.financialassistant.app',
+        version: '1.0.0',
+        build: '1'
+      };
+    }
+  }
+
+  /**
+   * Get app state
+   */
+  async getAppState(): Promise<AppState> {
     try {
       const state = await App.getState();
       return {
-        ...state,
-        isInitialized: this.isInitialized,
-        config: this.config
+        isActive: state.isActive
       };
     } catch (error) {
       console.error('Failed to get app state:', error);
-      return null;
+      return {
+        isActive: true
+      };
+    }
+  }
+
+  /**
+   * Get app URL
+   */
+  async getAppUrl(): Promise<AppUrl> {
+    try {
+      const url = await App.getLaunchUrl();
+      return {
+        url: url?.url || null
+      };
+    } catch (error) {
+      console.error('Failed to get app URL:', error);
+      return {
+        url: null
+      };
+    }
+  }
+
+  /**
+   * Get app path
+   */
+  async getAppPath(): Promise<AppPath> {
+    try {
+      const path = await App.getPath();
+      return {
+        path: path.path
+      };
+    } catch (error) {
+      console.error('Failed to get app path:', error);
+      return {
+        path: '/'
+      };
+    }
+  }
+
+  /**
+   * Get app build info
+   */
+  async getAppBuildInfo(): Promise<AppBuildInfo> {
+    try {
+      const info = await App.getBuildInfo();
+      return {
+        version: info.version,
+        build: info.build
+      };
+    } catch (error) {
+      console.error('Failed to get app build info:', error);
+      return {
+        version: '1.0.0',
+        build: '1'
+      };
     }
   }
 
@@ -365,7 +481,7 @@ export class MobileAppService {
   /**
    * Get biometric authentication info
    */
-  async getBiometricInfo(): Promise<any> {
+  async getBiometricInfo(): Promise<unknown> {
     if (!this.config.enableBiometricAuth) return null;
     // Implement biometric info retrieval
     return { available: false, type: 'none' };
@@ -374,7 +490,7 @@ export class MobileAppService {
   /**
    * Get available voice commands
    */
-  async getVoiceCommands(): Promise<any[]> {
+  async getVoiceCommands(): Promise<unknown[]> {
     if (!this.config.enableVoiceInput) return [];
     // Implement voice commands retrieval
     return [];
@@ -383,7 +499,7 @@ export class MobileAppService {
   /**
    * Get available widgets
    */
-  async getWidgets(): Promise<any[]> {
+  async getWidgets(): Promise<unknown[]> {
     if (!this.config.enableWidgets) return [];
     // Implement widgets retrieval
     return [];
@@ -392,7 +508,7 @@ export class MobileAppService {
   /**
    * Get quick actions
    */
-  async getQuickActions(): Promise<any[]> {
+  async getQuickActions(): Promise<unknown[]> {
     return [
       { id: 'add-expense', title: 'Add Expense', icon: 'plus' },
       { id: 'view-dashboard', title: 'Dashboard', icon: 'home' },
@@ -404,7 +520,7 @@ export class MobileAppService {
   /**
    * Get theme information
    */
-  async getThemeInfo(): Promise<any> {
+  async getThemeInfo(): Promise<unknown> {
     if (!this.config.enableThemeSupport) return null;
     return { current: 'system', available: ['light', 'dark', 'system'] };
   }
@@ -412,7 +528,7 @@ export class MobileAppService {
   /**
    * Get accessibility information
    */
-  async getAccessibilityInfo(): Promise<any> {
+  async getAccessibilityInfo(): Promise<unknown> {
     if (!this.config.enableAccessibility) return null;
     return { enabled: false, features: [] };
   }
@@ -420,7 +536,7 @@ export class MobileAppService {
   /**
    * Get performance report
    */
-  async getPerformanceReport(): Promise<any> {
+  async getPerformanceReport(): Promise<unknown> {
     if (!this.config.enablePerformanceMonitoring) return null;
     return { status: 'good', metrics: {} };
   }
@@ -428,7 +544,7 @@ export class MobileAppService {
   /**
    * Get security audit
    */
-  async getSecurityAudit(): Promise<any> {
+  async getSecurityAudit(): Promise<unknown> {
     if (!this.config.enableSecurityFeatures) return null;
     return { status: 'secure', issues: [] };
   }

@@ -665,7 +665,7 @@ export class AdvancedSearchService {
   /**
    * Execute a saved search
    */
-  async executeSavedSearch(id: string): Promise<SearchResult<any>[] | null> {
+  async executeSavedSearch(id: string): Promise<SearchResult<ExpenseItem | BudgetItem | AlertItem>[] | null> {
     const savedSearches = await this.getSavedSearches();
     const savedSearch = savedSearches.find(search => search.id === id);
     
@@ -771,7 +771,7 @@ export class AdvancedSearchService {
   /**
    * Get available filters for search
    */
-  getAvailableFilters(): { field: string; label: string; type: string; options?: any[] }[] {
+  getAvailableFilters(): { field: string; label: string; type: string; options?: string[] }[] {
     return [
       { field: 'category', label: 'Category', type: 'select' },
       { field: 'amount', label: 'Amount', type: 'number' },
@@ -784,7 +784,7 @@ export class AdvancedSearchService {
   /**
    * Export search results
    */
-  async exportSearchResults(searchResult: SearchResult<any>[], format: 'csv' | 'json' = 'csv'): Promise<string> {
+  async exportSearchResults(searchResult: SearchResult<ExpenseItem | BudgetItem | AlertItem>[], format: 'csv' | 'json' = 'csv'): Promise<string> {
     if (format === 'json') {
       return JSON.stringify(searchResult, null, 2);
     }
@@ -797,7 +797,7 @@ export class AdvancedSearchService {
     
     searchResult.forEach(item => {
       const values = headers.map(header => {
-        const value = item.item[header];
+        const value = (item.item as Record<string, unknown>)[header];
         return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
       });
       csvRows.push(values.join(','));

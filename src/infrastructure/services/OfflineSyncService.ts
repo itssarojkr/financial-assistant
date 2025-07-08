@@ -389,5 +389,4 @@ export class OfflineSyncService {
   getSyncQueue(): SyncItem[] {
     return [...this.syncQueue];
   }
-} 
-} 
+}

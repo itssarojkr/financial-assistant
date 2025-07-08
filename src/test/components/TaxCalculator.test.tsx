@@ -4,7 +4,7 @@ import TaxCalculator from '@/components/TaxCalculator'
 
 // Mock the tax calculators
 vi.mock('@/components/tax/TaxCalculatorUS', () => ({
-  default: ({ salaryData, taxData }: any) => (
+  default: ({ salaryData, taxData }: { salaryData: SalaryData; taxData: TaxData }) => (
     <div data-testid="us-calculator">
       US Calculator - Salary: {salaryData.grossSalary}
     </div>
@@ -12,7 +12,7 @@ vi.mock('@/components/tax/TaxCalculatorUS', () => ({
 }))
 
 vi.mock('@/components/tax/TaxCalculatorIndia', () => ({
-  default: ({ salaryData, taxData }: any) => (
+  default: ({ salaryData, taxData }: { salaryData: SalaryData; taxData: TaxData }) => (
     <div data-testid="india-calculator">
       India Calculator - Salary: {salaryData.grossSalary}
     </div>
@@ -20,7 +20,7 @@ vi.mock('@/components/tax/TaxCalculatorIndia', () => ({
 }))
 
 vi.mock('@/components/tax/StrategyBasedTaxCalculator', () => ({
-  default: ({ salaryData, taxData }: any) => (
+  default: ({ salaryData, taxData }: { salaryData: SalaryData; taxData: TaxData }) => (
     <div data-testid="strategy-calculator">
       Strategy Calculator - Salary: {salaryData.grossSalary}
     </div>
@@ -40,8 +40,8 @@ vi.mock('@/lib/utils', () => ({
   ),
   formatCurrency: vi.fn((amount: number, currency: string) => `${currency}${amount}`),
   formatNumber: vi.fn((num: number) => num.toLocaleString()),
-  debounce: vi.fn((func: Function, delay: number) => func),
-  throttle: vi.fn((func: Function, delay: number) => func),
+  debounce: vi.fn((func: (...args: unknown[]) => void, delay: number) => func),
+  throttle: vi.fn((func: (...args: unknown[]) => void, delay: number) => func),
   generateId: vi.fn(() => 'test-id'),
   isValidEmail: vi.fn((email: string) => email.includes('@')),
   isValidPhone: vi.fn((phone: string) => phone.length >= 10),
@@ -49,22 +49,26 @@ vi.mock('@/lib/utils', () => ({
   capitalize: vi.fn((str: string) => str.charAt(0).toUpperCase() + str.slice(1)),
   truncate: vi.fn((str: string, length: number) => str.slice(0, length) + '...'),
   sleep: vi.fn((ms: number) => Promise.resolve()),
-  retry: vi.fn((fn: Function, retries: number) => fn()),
-  memoize: vi.fn((fn: Function) => fn),
-  deepClone: vi.fn((obj: any) => JSON.parse(JSON.stringify(obj))),
-  isEmpty: vi.fn((value: any) => !value || (Array.isArray(value) && value.length === 0)),
-  isEqual: vi.fn((a: any, b: any) => JSON.stringify(a) === JSON.stringify(b)),
-  pick: vi.fn((obj: any, keys: string[]) => {
-    const result: any = {};
+  retry: vi.fn((fn: (...args: unknown[]) => void, retries: number) => fn()),
+  memoize: vi.fn((fn: (...args: unknown[]) => void) => fn),
+  deepClone: vi.fn((obj: unknown) => JSON.parse(JSON.stringify(obj))),
+  isEmpty: vi.fn((value: unknown) => !value || (Array.isArray(value) && value.length === 0)),
+  isEqual: vi.fn((a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)),
+  pick: vi.fn((obj: Record<string, unknown>, keys: string[]) => {
+    const result: Record<string, unknown> = {};
     keys.forEach(key => {
-      if (key in obj) result[key] = obj[key];
+      if (key in obj) {
+        result[key] = obj[key];
+      }
     });
     return result;
   }),
-  omit: vi.fn((obj: any, keys: string[]) => {
-    const result: any = {};
+  omit: vi.fn((obj: Record<string, unknown>, keys: string[]) => {
+    const result: Record<string, unknown> = {};
     Object.keys(obj).forEach(key => {
-      if (!keys.includes(key)) result[key] = obj[key];
+      if (!keys.includes(key)) {
+        result[key] = obj[key];
+      }
     });
     return result;
   }),

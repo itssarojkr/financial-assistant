@@ -48,7 +48,7 @@ export interface ApiErrorResponse {
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
   timeout?: number;
   retries?: number;
   cache?: boolean;

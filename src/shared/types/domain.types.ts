@@ -110,7 +110,7 @@ export interface ValidationError {
   field: string;
   message: string;
   code: string;
-  value?: any;
+  value?: unknown;
 }
 
 /**
@@ -126,7 +126,7 @@ export interface ValidationWarning {
 /**
  * Business rule interface
  */
-export interface BusinessRule<T = any> {
+export interface BusinessRule<T = unknown> {
   name: string;
   description: string;
   validate: (entity: T) => ValidationResult;
@@ -141,7 +141,7 @@ export interface DomainEvent {
   type: string;
   aggregateId: string;
   aggregateType: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   metadata: {
     timestamp: Date;
     version: number;
@@ -305,3 +305,119 @@ export type EntityId = string;
  * Timestamp type
  */
 export type Timestamp = Date | string | number; 
+
+export interface TaxCalculationResult {
+  grossIncome: number;
+  netIncome: number;
+  totalTax: number;
+  effectiveTaxRate: number;
+  marginalTaxRate: number;
+  breakdown: TaxBreakdown;
+  deductions: Deduction[];
+  credits: Credit[];
+  metadata: Record<string, unknown>;
+}
+
+export interface TaxBreakdown {
+  federal: number;
+  state?: number;
+  local?: number;
+  socialSecurity?: number;
+  medicare?: number;
+  other?: number;
+  details: Record<string, number>;
+}
+
+export interface Deduction {
+  name: string;
+  amount: number;
+  type: 'standard' | 'itemized' | 'above-the-line' | 'below-the-line';
+  description?: string;
+  limit?: number;
+  phaseOut?: {
+    start: number;
+    end: number;
+    rate: number;
+  };
+}
+
+export interface Credit {
+  name: string;
+  amount: number;
+  type: 'refundable' | 'non-refundable';
+  description?: string;
+  limit?: number;
+  phaseOut?: {
+    start: number;
+    end: number;
+    rate: number;
+  };
+}
+
+export interface TaxBracket {
+  rate: number;
+  minIncome: number;
+  maxIncome?: number;
+  taxAmount: number;
+}
+
+export interface TaxSchedule {
+  filingStatus: FilingStatus;
+  brackets: TaxBracket[];
+  standardDeduction: number;
+  personalExemption?: number;
+  dependentExemption?: number;
+}
+
+export interface TaxForm {
+  id: string;
+  name: string;
+  description: string;
+  fields: TaxFormField[];
+  calculations: TaxFormCalculation[];
+  validations: TaxFormValidation[];
+  dependencies: TaxFormDependency[];
+}
+
+export interface TaxFormField {
+  id: string;
+  name: string;
+  label: string;
+  type: 'number' | 'text' | 'select' | 'checkbox' | 'date' | 'currency';
+  required: boolean;
+  defaultValue?: unknown;
+  validation?: TaxFormValidation[];
+  dependencies?: TaxFormDependency[];
+  helpText?: string;
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+}
+
+export interface TaxFormCalculation {
+  id: string;
+  name: string;
+  formula: string;
+  description: string;
+  dependencies: string[];
+  result: number;
+  unit?: string;
+  displayFormat?: string;
+}
+
+export interface TaxFormValidation {
+  id: string;
+  fieldId: string;
+  type: 'required' | 'range' | 'format' | 'custom';
+  rule: string;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+export interface TaxFormDependency {
+  id: string;
+  fieldId: string;
+  condition: string;
+  action: 'show' | 'hide' | 'enable' | 'disable' | 'calculate';
+  targetFieldId?: string;
+  value?: unknown;
+} 

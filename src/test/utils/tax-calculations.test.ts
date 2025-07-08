@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateBracketTax, calculateTotalBracketTax, calculateEffectiveTaxRate } from '@/lib/tax-utils'
+import { TaxBracket } from '@/lib/tax-utils'
 
 describe('Tax Calculation Utilities', () => {
   describe('calculateBracketTax', () => {
@@ -70,7 +71,7 @@ describe('Tax Calculation Utilities', () => {
     })
 
     it('handles empty brackets', () => {
-      const brackets: any[] = []
+      const brackets: TaxBracket[] = [];
       
       const result = calculateTotalBracketTax(brackets)
       

@@ -35,8 +35,8 @@ vi.mock('@tanstack/react-query', () => ({
     invalidateQueries: vi.fn(),
     clear: vi.fn(),
   })),
-  QueryClientProvider: ({ children }: any) => children,
-  useQuery: vi.fn(({ queryKey, queryFn }: any) => {
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
+  useQuery: vi.fn(({ queryKey, queryFn }: { queryKey: string[]; queryFn: () => Promise<unknown> }) => {
     if (queryKey[0] === 'countries') {
       return {
         data: [
@@ -208,7 +208,7 @@ describe('CountrySelector', () => {
       fetchStatus: 'idle',
       refetch: vi.fn(),
       remove: vi.fn(),
-    } as any)
+    } as { data: Country[]; isLoading: boolean; error: Error | null })
     
     render(<CountrySelector {...defaultProps} />)
     

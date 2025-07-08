@@ -1,4 +1,5 @@
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
+import { LocalAuthentication, BiometricStrength } from '@capacitor-community/local-authentication';
 
 export interface BiometricConfig {
   title: string;
@@ -65,7 +66,7 @@ export class BiometricAuthService {
   /**
    * Map biometric type to standardized format
    */
-  private mapBiometricType(type: any): 'fingerprint' | 'face' | 'iris' | 'none' {
+  private mapBiometricType(type: unknown): 'fingerprint' | 'face' | 'iris' | 'none' {
     const typeString = String(type).toLowerCase();
     switch (typeString) {
       case 'fingerprint':
@@ -172,8 +173,14 @@ export class BiometricAuthService {
   /**
    * Check if biometric authentication is available
    */
-  isBiometricAvailable(): boolean {
-    return this.isAvailable;
+  async isAvailable(): Promise<boolean> {
+    try {
+      const result = await LocalAuthentication.checkBiometricStrength();
+      return result.biometricStrength === BiometricStrength.STRONG;
+    } catch (error) {
+      console.error('Biometric authentication not available:', error);
+      return false;
+    }
   }
 
   /**

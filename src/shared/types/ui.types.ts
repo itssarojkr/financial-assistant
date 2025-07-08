@@ -39,7 +39,7 @@ export interface UIState {
 /**
  * Form field interface
  */
-export interface FormField<T = any> {
+export interface FormField<T = unknown> {
   name: string;
   value: T;
   error?: string;
@@ -54,7 +54,7 @@ export interface FormField<T = any> {
 /**
  * Form state interface
  */
-export interface FormState<T = Record<string, any>> {
+export interface FormState<T = Record<string, unknown>> {
   values: T;
   errors: Record<string, string>;
   touched: Record<string, boolean>;
@@ -68,9 +68,9 @@ export interface FormState<T = Record<string, any>> {
  */
 export interface FormValidationRule {
   type: 'required' | 'email' | 'min' | 'max' | 'pattern' | 'custom';
-  value?: any;
+  value?: unknown;
   message: string;
-  validator?: (value: any) => boolean | string;
+  validator?: (value: unknown) => boolean | string;
 }
 
 /**
@@ -172,7 +172,7 @@ export interface TabItem {
 /**
  * Select option interface
  */
-export interface SelectOption<T = any> {
+export interface SelectOption<T = unknown> {
   value: T;
   label: string;
   disabled?: boolean;
@@ -221,7 +221,7 @@ export interface ChartDataPoint {
   label: string;
   value: number;
   color?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -255,8 +255,8 @@ export interface FileUpload {
  */
 export interface DragDropState {
   isDragging: boolean;
-  draggedItem?: any;
-  dropTarget?: any;
+  draggedItem?: unknown;
+  dropTarget?: unknown;
   canDrop: boolean;
 }
 

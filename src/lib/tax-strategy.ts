@@ -74,7 +74,7 @@ export interface AdditionalTaxParams {
   taxableIncome: number;
   baseTax: number;
   regime?: string;
-  additionalParams?: Record<string, any>;
+  additionalParams?: Record<string, unknown>;
 }
 
 // Base Strategy Class

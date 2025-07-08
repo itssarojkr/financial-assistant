@@ -187,7 +187,7 @@ export class MobileService {
   /**
    * Get app information
    */
-  async getAppInfo(): Promise<any> {
+  async getAppInfo(): Promise<unknown> {
     if (!MobileService.isMobile()) return null;
 
     try {
@@ -210,6 +210,13 @@ export class MobileService {
     } catch (error) {
       console.error('Error exiting app:', error);
     }
+  }
+
+  private mapBiometricType(type: unknown): 'fingerprint' | 'face' | 'iris' | 'none' {
+    if (type === 'fingerprint') return 'fingerprint';
+    if (type === 'face') return 'face';
+    if (type === 'iris') return 'iris';
+    return 'none';
   }
 
 } 

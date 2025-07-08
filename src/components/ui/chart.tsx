@@ -67,7 +67,7 @@ ChartContainer.displayName = "Chart"
 
 const sanitizeCSS = (css: string) => {
   // Allow only safe CSS characters (letters, numbers, dashes, colons, semicolons, spaces, curly braces, and newlines)
-  return css.replace(/[^a-zA-Z0-9\-:;{}\s\n.#\[\]\(\),%]/g, '');
+  return css.replace(/[^a-zA-Z0-9\-:;{}\s\n.#[\](),%]/g, '');
 };
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {

@@ -37,31 +37,31 @@ const MobileIndex = () => {
   const [taxDataUS, setTaxDataUS] = useState<TaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0
   });
-  const [taxDataCanada, setTaxDataCanada] = useState<any>({
+  const [taxDataCanada, setTaxDataCanada] = useState<CanadaTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     provTax: 0, cpp: 0, ei: 0, federalTaxable: 0, provTaxable: 0, brackets: []
   });
-  const [taxDataUK, setTaxDataUK] = useState<any>({
+  const [taxDataUK, setTaxDataUK] = useState<UKTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, ni: 0, studentLoan: 0, taxable: 0, brackets: []
   });
-  const [taxDataAustralia, setTaxDataAustralia] = useState<any>({
+  const [taxDataAustralia, setTaxDataAustralia] = useState<AustraliaTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, medicareSurcharge: 0, super: 0, taxable: 0, brackets: []
   });
-  const [taxDataGermany, setTaxDataGermany] = useState<any>({
+  const [taxDataGermany, setTaxDataGermany] = useState<GermanyTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, soli: 0, churchTax: 0, taxable: 0, brackets: []
   });
-  const [taxDataFrance, setTaxDataFrance] = useState<any>({
+  const [taxDataFrance, setTaxDataFrance] = useState<FranceTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, csgcrds: 0, taxable: 0, brackets: []
   });
-  const [taxDataBrazil, setTaxDataBrazil] = useState<any>({
+  const [taxDataBrazil, setTaxDataBrazil] = useState<BrazilTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     inss: 0, irpf: 0, taxable: 0, brackets: []
   });
-  const [taxDataSouthAfrica, setTaxDataSouthAfrica] = useState<any>({
+  const [taxDataSouthAfrica, setTaxDataSouthAfrica] = useState<SouthAfricaTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, rebate: 0, uif: 0, taxable: 0, brackets: []
   });
@@ -83,8 +83,8 @@ const MobileIndex = () => {
   const [usState, setUsState] = useState('');
 
   // Select correct taxData and setTaxData for the selected country
-  let taxData: any = {};
-  let setTaxData: any = () => {};
+  let taxData: TaxData = {};
+  let setTaxData: React.Dispatch<React.SetStateAction<TaxData>> = () => {};
   switch (salaryData.country) {
     case 'India':
       taxData = taxDataIndia;

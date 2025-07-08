@@ -313,25 +313,25 @@ const Index = () => {
               setTaxDataUS(savedData.taxData);
               break;
             case 'Canada':
-              setTaxDataCanada(savedData.taxData as any);
+              setTaxDataCanada(savedData.taxData as CanadaTaxData);
               break;
             case 'United Kingdom':
-              setTaxDataUK(savedData.taxData as any);
+              setTaxDataUK(savedData.taxData as UKTaxData);
               break;
             case 'Australia':
-              setTaxDataAustralia(savedData.taxData as any);
+              setTaxDataAustralia(savedData.taxData as AustraliaTaxData);
               break;
             case 'Germany':
-              setTaxDataGermany(savedData.taxData as any);
+              setTaxDataGermany(savedData.taxData as GermanyTaxData);
               break;
             case 'France':
-              setTaxDataFrance(savedData.taxData as any);
+              setTaxDataFrance(savedData.taxData as FranceTaxData);
               break;
             case 'Brazil':
-              setTaxDataBrazil(savedData.taxData as any);
+              setTaxDataBrazil(savedData.taxData as BrazilTaxData);
               break;
             case 'South Africa':
-              setTaxDataSouthAfrica(savedData.taxData as any);
+              setTaxDataSouthAfrica(savedData.taxData as SouthAfricaTaxData);
               break;
           }
         }
@@ -345,8 +345,8 @@ const Index = () => {
 
   // Save calculation data when it changes (for anonymous users)
   useEffect(() => {
-    let taxData: any = {};
-    let setTaxData: any = () => {};
+    let taxData: TaxData = {};
+    let setTaxData: React.Dispatch<React.SetStateAction<TaxData>> = () => {};
     switch (salaryData.country) {
       case 'India':
         taxData = taxDataIndia;
@@ -486,8 +486,8 @@ const Index = () => {
   }, [salaryData.grossSalary, salaryData.country, salaryData.city]);
 
   // Select correct taxData and setTaxData for the selected country
-  let taxData: any = {};
-  let setTaxData: any = () => {};
+  let taxData: TaxData = {};
+  let setTaxData: React.Dispatch<React.SetStateAction<TaxData>> = () => {};
   switch (salaryData.country) {
     case 'India':
       taxData = taxDataIndia;
@@ -946,7 +946,7 @@ const Index = () => {
     }
   };
 
-  const loadCalculation = (calculation: any) => {
+  const loadCalculation = (calculation: SavedCalculation) => {
     const data = calculation.data_content;
     
     // Load salary data
@@ -958,7 +958,7 @@ const Index = () => {
     }));
 
     // Load tax data based on country with all required properties
-    const taxDataToLoad = {
+    const taxDataToLoad: TaxData = {
       federalTax: 0,
       stateTax: 0,
       socialSecurity: 0,
@@ -978,25 +978,25 @@ const Index = () => {
         setTaxDataUS(taxDataToLoad);
         break;
       case 'Canada':
-        setTaxDataCanada(taxDataToLoad as any);
+        setTaxDataCanada(taxDataToLoad as CanadaTaxData);
         break;
       case 'United Kingdom':
-        setTaxDataUK(taxDataToLoad as any);
+        setTaxDataUK(taxDataToLoad as UKTaxData);
         break;
       case 'Australia':
-        setTaxDataAustralia(taxDataToLoad as any);
+        setTaxDataAustralia(taxDataToLoad as AustraliaTaxData);
         break;
       case 'Germany':
-        setTaxDataGermany(taxDataToLoad as any);
+        setTaxDataGermany(taxDataToLoad as GermanyTaxData);
         break;
       case 'France':
-        setTaxDataFrance(taxDataToLoad as any);
+        setTaxDataFrance(taxDataToLoad as FranceTaxData);
         break;
       case 'Brazil':
-        setTaxDataBrazil(taxDataToLoad as any);
+        setTaxDataBrazil(taxDataToLoad as BrazilTaxData);
         break;
       case 'South Africa':
-        setTaxDataSouthAfrica(taxDataToLoad as any);
+        setTaxDataSouthAfrica(taxDataToLoad as SouthAfricaTaxData);
         break;
     }
 

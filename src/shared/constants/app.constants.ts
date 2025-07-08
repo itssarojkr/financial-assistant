@@ -169,13 +169,13 @@ export const VALIDATION = {
   NAME: {
     MIN_LENGTH: 1,
     MAX_LENGTH: 100,
-    PATTERN: /^[a-zA-Z\s\-'\.]+$/,
+    PATTERN: /^[a-zA-Z\s\-'.]+$/,
   },
   PHONE: {
-    PATTERN: /^[\+]?[1-9][\d]{0,15}$/,
+    PATTERN: /^[+]?[1-9][\d]{0,15}$/,
   },
   URL: {
-    PATTERN: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
+    PATTERN: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/,
   },
 } as const;
 

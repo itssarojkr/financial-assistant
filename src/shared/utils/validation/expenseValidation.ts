@@ -568,10 +568,10 @@ export function validateExpense(
  */
 export function createExpenseValidationRule(
   field: string,
-  validator: (value: any) => boolean | string,
+  validator: (value: unknown) => boolean | string,
   message: string
-): (value: any) => ValidationResult {
-  return (value: any): ValidationResult => {
+): (value: unknown) => ValidationResult {
+  return (value: unknown): ValidationResult => {
     const result = validator(value);
     const isValid = typeof result === 'boolean' ? result : false;
     const errorMessage = typeof result === 'string' ? result : message;

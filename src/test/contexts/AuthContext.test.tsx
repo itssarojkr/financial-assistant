@@ -87,7 +87,7 @@ describe('AuthContext', () => {
     const { supabase } = await import('@/integrations/supabase/client')
     
     // Mock auth state change
-    let authCallback: any = null
+    let authCallback: (() => void) | null = null;
     vi.mocked(supabase.auth.onAuthStateChange).mockImplementation((callback) => {
       authCallback = callback
       return { 
@@ -130,7 +130,7 @@ describe('AuthContext', () => {
     // Mock auth error
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
       data: { session: null },
-      error: { message: 'Auth error' } as any
+      error: { message: 'Auth error' } as Error
     })
     
     renderWithAuth(<TestComponent />)

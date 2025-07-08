@@ -103,7 +103,7 @@ export const calculateMonthlyValue = (annualValue: number): number => {
  */
 export const useTaxCalculation = (
   params: TaxCalculationParams,
-  dependencies: any[]
+  dependencies: unknown[]
 ) => {
   return useMemo(() => {
     const { grossSalary, deductions, brackets, additionalTaxes = {} } = params;
@@ -149,8 +149,8 @@ export const useTaxCalculation = (
  * Memoized chart data preparation
  */
 export const useChartData = (
-  currentData: any,
-  whatIfData: any,
+  currentData: unknown,
+  whatIfData: unknown,
   dataKeys: string[]
 ) => {
   return useMemo(() => {

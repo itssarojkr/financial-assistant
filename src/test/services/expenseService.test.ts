@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ExpenseService } from '@/application/services/ExpenseService'
 import { Expense } from '@/core/domain/entities/Expense'
 import { ExpenseCategory } from '@/core/domain/enums/ExpenseCategory'
+import { ExpenseRepository } from '@/infrastructure/database/repositories/ExpenseRepository'
 
 // Mock the ExpenseRepository
 const mockExpenseRepository = {
@@ -32,7 +33,7 @@ describe('ExpenseService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    expenseService = new ExpenseService(mockExpenseRepository as any);
+    expenseService = new ExpenseService(mockExpenseRepository as ExpenseRepository);
   })
 
   describe('createExpense', () => {
@@ -179,7 +180,7 @@ describe('ExpenseService', () => {
       vi.mocked(mockExpenseRepository.findById).mockResolvedValue(mockExpense);
       vi.mocked(mockExpenseRepository.update).mockResolvedValue(mockExpense);
 
-      const result = await expenseService.updateExpense('expense123', { amount: 150, description: 'Updated Expense' } as any);
+      const result = await expenseService.updateExpense('expense123', { amount: 150, description: 'Updated Expense' } as Partial<Expense>);
 
       expect(result).toEqual(mockExpense);
       expect(mockExpenseRepository.findById).toHaveBeenCalledWith('expense123');
