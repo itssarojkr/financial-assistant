@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserDataService, SavedData, TaxCalculationData } from '@/services/userDataService';
+import { UserDataService, SavedData, TaxCalculationData } from '@/application/services/UserDataService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,13 +36,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('calculations');
 
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    }
-  }, [user]);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -70,22 +64,64 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    }
+  }, [user, loadUserData]);
 
   const handleToggleFavorite = async (dataId: string, isFavorite: boolean) => {
     if (!user) return;
 
+    // Optimistically update local state
+    setSavedCalculations(prev =>
+      prev.map(calc =>
+        calc.id === dataId
+          ? { ...calc, is_favorite: !isFavorite }
+          : calc
+      )
+    );
+    setFavorites(prev =>
+      isFavorite
+        ? prev.filter(calc => calc.id !== dataId)
+        : [...prev, savedCalculations.find(calc => calc.id === dataId)!]
+    );
+
     try {
       const { error } = await UserDataService.updateFavoriteStatus(dataId, !isFavorite);
-      
       if (error) {
         setError('Failed to update favorite status');
-      } else {
-        // Reload data to reflect changes
-        await loadUserData();
+        // Revert local state if backend fails
+        setSavedCalculations(prev =>
+          prev.map(calc =>
+            calc.id === dataId
+              ? { ...calc, is_favorite: isFavorite }
+              : calc
+          )
+        );
+        setFavorites(prev =>
+          !isFavorite
+            ? prev.filter(calc => calc.id !== dataId)
+            : [...prev, savedCalculations.find(calc => calc.id === dataId)!]
+        );
       }
     } catch (err) {
       setError('Failed to update favorite status');
+      // Revert local state if backend fails
+      setSavedCalculations(prev =>
+        prev.map(calc =>
+          calc.id === dataId
+            ? { ...calc, is_favorite: isFavorite }
+            : calc
+        )
+      );
+      setFavorites(prev =>
+        !isFavorite
+          ? prev.filter(calc => calc.id !== dataId)
+          : [...prev, savedCalculations.find(calc => calc.id === dataId)!]
+      );
     }
   };
 

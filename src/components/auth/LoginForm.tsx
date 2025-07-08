@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (emailRef.current) {
+      emailRef.current.focus();
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -49,15 +57,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center" id="login-form-title">Welcome back</CardTitle>
         <CardDescription className="text-center">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" role="form" aria-labelledby="login-form-title">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" id="login-error" aria-live="assertive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -66,12 +74,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              ref={emailRef}
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
+              aria-describedby={error ? 'login-error' : undefined}
+              aria-invalid={!!error}
             />
           </div>
 

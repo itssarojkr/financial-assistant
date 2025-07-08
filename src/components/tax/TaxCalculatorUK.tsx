@@ -8,6 +8,7 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
 
 const UK_COUNTRIES = [
   { name: 'England', code: 'ENG' },
@@ -42,12 +43,16 @@ const STUDENT_LOAN_PLANS = [
   { name: 'Plan 4', threshold: 27660, rate: 0.09 },
 ];
 
-type UKTaxData = TaxData & {
+interface UKAdditionalParams {
+  [key: string]: string | number | boolean;
+}
+
+interface UKTaxData extends TaxData {
   incomeTax: number;
   ni: number;
   studentLoan: number;
   taxable: number;
-};
+}
 
 interface TaxCalculatorUKProps {
   salaryData: SalaryData;
@@ -58,6 +63,8 @@ interface TaxCalculatorUKProps {
   setUkCountry: (country: string) => void;
   ukStudentLoanPlan: string;
   setUkStudentLoanPlan: (plan: string) => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const UK_BRACKETS = [
@@ -75,7 +82,7 @@ const NI_BRACKETS = [
 
 const MAX_PENSION_CONTRIBUTION = 40000;
 
-const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, setTaxData, onNext, ukCountry, setUkCountry, ukStudentLoanPlan, setUkStudentLoanPlan }) => {
+const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, setTaxData, onNext, ukCountry, setUkCountry, ukStudentLoanPlan, setUkStudentLoanPlan, userCurrency, countryCurrency }) => {
   // Use the reusable tax calculator hook
   const {
     viewMode,
@@ -119,7 +126,7 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
   const calculateUKTax = useCallback((params: {
     grossSalary: number;
     deductions: Record<string, number>;
-    additionalParams?: Record<string, any>;
+    additionalParams?: UKAdditionalParams;
   }) => {
     const { grossSalary, deductions } = params;
 
@@ -206,7 +213,7 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         ni: mainTaxCalculation.breakdown.nationalInsurance,
         studentLoan: 0,
         taxable: mainTaxCalculation.taxableIncome,
-      } as any);
+      } as UKTaxData);
     }
   }, [mainTaxCalculation, setTaxData]);
 
@@ -226,11 +233,12 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         ni: whatIfTaxCalculation.breakdown.nationalInsurance,
         studentLoan: 0,
         taxable: whatIfTaxCalculation.taxableIncome,
-      } as any);
+      } as UKTaxData);
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = '£';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
 
   return (
     <div>
@@ -243,7 +251,7 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         currentTaxData={taxData}
         whatIfTaxData={whatIfTaxData}
         currentSalary={salaryData.grossSalary}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '£'}
         showCalculationModal={showCalculationModal}
         onToggleCalculationModal={() => setShowCalculationModal(!showCalculationModal)}
         countryName="United Kingdom"
@@ -262,11 +270,14 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
 
       {/* Tax Summary Card - Reusable component */}
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || '£'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
 
       {/* Tax Breakdown - Country-specific display */}
@@ -274,13 +285,16 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {countryCurrency || '£'}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{countryCurrency || '£'}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
 
         {/* Display deductions if any */}
@@ -288,21 +302,21 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
           {/* Personal Allowance - Always shown */}
           <div className="flex justify-between text-sm text-blue-700">
             <span>Personal Allowance</span>
-            <span className="font-medium">-{currencySymbol}{PERSONAL_ALLOWANCE.toLocaleString()}</span>
+            <span className="font-medium">-{countryCurrency || '£'}{PERSONAL_ALLOWANCE.toLocaleString()}</span>
           </div>
           
           {/* Additional Deductions */}
           {totalDeductions > 0 && (
             <div className="flex justify-between text-sm text-blue-700">
               <span>Additional Deductions</span>
-              <span className="font-medium">-{currencySymbol}{totalDeductions.toLocaleString()}</span>
+              <span className="font-medium">-{countryCurrency || '£'}{totalDeductions.toLocaleString()}</span>
             </div>
           )}
           
           {/* Total Deductions */}
           <div className="flex justify-between text-sm text-blue-700 font-medium border-t pt-1">
             <span>Total Deductions</span>
-            <span>-{currencySymbol}{(PERSONAL_ALLOWANCE + totalDeductions).toLocaleString()}</span>
+            <span>-{countryCurrency || '£'}{(PERSONAL_ALLOWANCE + totalDeductions).toLocaleString()}</span>
           </div>
         </div>
 
@@ -310,7 +324,7 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Income Tax</span>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.federalTax).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '£'}{getValue(taxData.federalTax).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>National Insurance</span>
@@ -325,7 +339,7 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
                 <p>National Insurance contributions with progressive rates</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.socialSecurity).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '£'}{getValue(taxData.socialSecurity).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -335,9 +349,11 @@ const TaxCalculatorUK: React.FC<TaxCalculatorUKProps> = ({ salaryData, taxData, 
         brackets={taxData.brackets || []}
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '£'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
 
       {/* Continue Button */}

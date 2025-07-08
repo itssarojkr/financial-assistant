@@ -102,15 +102,15 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Salary:</span>
-                <span className="font-medium">{currencySymbol}{currentSalary.toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{(currentSalary || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Tax:</span>
-                <span className="font-medium">{currencySymbol}{getValue(currentTaxData.totalTax).toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{getValue(currentTaxData.totalTax || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Take-Home:</span>
-                <span className="font-medium">{currencySymbol}{getValue(currentTaxData.takeHomeSalary).toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{getValue(currentTaxData.takeHomeSalary || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -121,15 +121,15 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Salary:</span>
-                <span className="font-medium">{currencySymbol}{whatIfSalary.toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{(whatIfSalary || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Tax:</span>
-                <span className="font-medium">{currencySymbol}{getValue(whatIfTaxData.totalTax).toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{getValue(whatIfTaxData.totalTax || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Take-Home:</span>
-                <span className="font-medium">{currencySymbol}{getValue(whatIfTaxData.takeHomeSalary).toLocaleString()}</span>
+                <span className="font-medium">{currencySymbol}{getValue(whatIfTaxData.takeHomeSalary || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
             }`}>
               <div className="text-xs">Salary Difference</div>
               <div className="font-semibold">
-                {differences.salaryDifference >= 0 ? '+' : ''}{currencySymbol}{differences.salaryDifference.toLocaleString()}
+                {differences.salaryDifference >= 0 ? '+' : ''}{currencySymbol}{(differences.salaryDifference || 0).toLocaleString()}
               </div>
             </div>
             
@@ -152,7 +152,7 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
             }`}>
               <div className="text-xs">Tax Difference</div>
               <div className="font-semibold">
-                {differences.taxDifference <= 0 ? '+' : ''}{currencySymbol}{Math.abs(differences.taxDifference).toLocaleString()}
+                {differences.taxDifference <= 0 ? '+' : ''}{currencySymbol}{(Math.abs(differences.taxDifference) || 0).toLocaleString()}
               </div>
             </div>
             
@@ -161,7 +161,7 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
             }`}>
               <div className="text-xs">Take-Home Difference</div>
               <div className="font-semibold">
-                {differences.takeHomeDifference >= 0 ? '+' : ''}{currencySymbol}{differences.takeHomeDifference.toLocaleString()}
+                {differences.takeHomeDifference >= 0 ? '+' : ''}{currencySymbol}{(differences.takeHomeDifference || 0).toLocaleString()}
               </div>
             </div>
           </div>
@@ -195,13 +195,13 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold text-lg mb-3 text-blue-700">Original Scenario</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><strong>Gross Salary:</strong> {currencySymbol}{currentSalary?.toLocaleString() || 0}</div>
-                    <div><strong>Federal Tax:</strong> {currencySymbol}{currentTaxData.federalTax?.toLocaleString() || 0}</div>
-                    <div><strong>State Tax:</strong> {currencySymbol}{currentTaxData.stateTax?.toLocaleString() || 0}</div>
-                    <div><strong>Social Security:</strong> {currencySymbol}{currentTaxData.socialSecurity?.toLocaleString() || 0}</div>
-                    <div><strong>Medicare:</strong> {currencySymbol}{currentTaxData.medicare?.toLocaleString() || 0}</div>
-                    <div><strong>Total Tax:</strong> {currencySymbol}{currentTaxData.totalTax?.toLocaleString() || 0}</div>
-                    <div><strong>Take-Home:</strong> {currencySymbol}{currentTaxData.takeHomeSalary?.toLocaleString() || 0}</div>
+                    <div><strong>Gross Salary:</strong> {currencySymbol}{(currentSalary || 0).toLocaleString()}</div>
+                    <div><strong>Federal Tax:</strong> {currencySymbol}{(currentTaxData.federalTax || 0).toLocaleString()}</div>
+                    <div><strong>State Tax:</strong> {currencySymbol}{(currentTaxData.stateTax || 0).toLocaleString()}</div>
+                    <div><strong>Social Security:</strong> {currencySymbol}{(currentTaxData.socialSecurity || 0).toLocaleString()}</div>
+                    <div><strong>Medicare:</strong> {currencySymbol}{(currentTaxData.medicare || 0).toLocaleString()}</div>
+                    <div><strong>Total Tax:</strong> {currencySymbol}{(currentTaxData.totalTax || 0).toLocaleString()}</div>
+                    <div><strong>Take-Home:</strong> {currencySymbol}{(currentTaxData.takeHomeSalary || 0).toLocaleString()}</div>
                     <div><strong>Effective Tax Rate:</strong> {currentSalary > 0 ? ((currentTaxData.totalTax / currentSalary) * 100).toFixed(2) : 0}%</div>
                   </div>
                 </div>
@@ -210,13 +210,13 @@ const WhatIfCalculator: React.FC<WhatIfCalculatorProps> = ({
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold text-lg mb-3 text-green-700">What-if Scenario</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><strong>Gross Salary:</strong> {currencySymbol}{whatIfSalary?.toLocaleString() || 0}</div>
-                    <div><strong>Federal Tax:</strong> {currencySymbol}{whatIfTaxData.federalTax?.toLocaleString() || 0}</div>
-                    <div><strong>State Tax:</strong> {currencySymbol}{whatIfTaxData.stateTax?.toLocaleString() || 0}</div>
-                    <div><strong>Social Security:</strong> {currencySymbol}{whatIfTaxData.socialSecurity?.toLocaleString() || 0}</div>
-                    <div><strong>Medicare:</strong> {currencySymbol}{whatIfTaxData.medicare?.toLocaleString() || 0}</div>
-                    <div><strong>Total Tax:</strong> {currencySymbol}{whatIfTaxData.totalTax?.toLocaleString() || 0}</div>
-                    <div><strong>Take-Home:</strong> {currencySymbol}{whatIfTaxData.takeHomeSalary?.toLocaleString() || 0}</div>
+                    <div><strong>Gross Salary:</strong> {currencySymbol}{(whatIfSalary || 0).toLocaleString()}</div>
+                    <div><strong>Federal Tax:</strong> {currencySymbol}{(whatIfTaxData.federalTax || 0).toLocaleString()}</div>
+                    <div><strong>State Tax:</strong> {currencySymbol}{(whatIfTaxData.stateTax || 0).toLocaleString()}</div>
+                    <div><strong>Social Security:</strong> {currencySymbol}{(whatIfTaxData.socialSecurity || 0).toLocaleString()}</div>
+                    <div><strong>Medicare:</strong> {currencySymbol}{(whatIfTaxData.medicare || 0).toLocaleString()}</div>
+                    <div><strong>Total Tax:</strong> {currencySymbol}{(whatIfTaxData.totalTax || 0).toLocaleString()}</div>
+                    <div><strong>Take-Home:</strong> {currencySymbol}{(whatIfTaxData.takeHomeSalary || 0).toLocaleString()}</div>
                     <div><strong>Effective Tax Rate:</strong> {whatIfSalary > 0 ? ((whatIfTaxData.totalTax / whatIfSalary) * 100).toFixed(2) : 0}%</div>
                   </div>
                 </div>

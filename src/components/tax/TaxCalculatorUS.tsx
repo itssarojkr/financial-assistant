@@ -9,6 +9,12 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
+
+interface USAdditionalParams {
+  filingStatus?: 'single' | 'married' | 'head';
+  state?: string;
+}
 
 interface TaxCalculatorUSProps {
   salaryData: SalaryData;
@@ -19,6 +25,8 @@ interface TaxCalculatorUSProps {
   setUsFilingStatus: (status: 'single' | 'married' | 'head') => void;
   usState: string;
   setUsState: (state: string) => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const US_STATES = [
@@ -83,7 +91,9 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
   usFilingStatus, 
   setUsFilingStatus, 
   usState, 
-  setUsState 
+  setUsState,
+  userCurrency,
+  countryCurrency
 }) => {
   // Use the reusable tax calculator hook
   const {
@@ -127,7 +137,7 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
   const calculateUSTax = useCallback((params: {
     grossSalary: number;
     deductions: Record<string, number>;
-    additionalParams?: Record<string, any>;
+    additionalParams?: USAdditionalParams;
   }) => {
     const { grossSalary, deductions, additionalParams = {} } = params;
     const filingStatus = additionalParams.filingStatus || usFilingStatus;
@@ -230,7 +240,10 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = '$';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
+
+  const currencySymbol = countryCurrency || '$';
 
   return (
     <div>
@@ -296,11 +309,14 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
 
       {/* Tax Summary Card - Reusable component */}
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || '$'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
 
       {/* Tax Breakdown - Country-specific display */}
@@ -308,13 +324,16 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {countryCurrency || '$'}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{currencySymbol}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
 
         {/* Display deductions if any */}
@@ -373,9 +392,11 @@ const TaxCalculatorUS: React.FC<TaxCalculatorUSProps> = ({
         brackets={taxData.brackets || []}
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '$'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
 
       {/* Continue Button */}

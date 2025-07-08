@@ -1,15 +1,20 @@
-import { useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { MapPin, TrendingUp, Info } from 'lucide-react';
+import { MapPin, TrendingUp, Info, PieChart, BarChart3 } from 'lucide-react';
+import { PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { SalaryData, ExpenseData } from '@/pages/Index';
+import { convertCurrency } from '@/lib/utils';
+import { TooltipProps } from 'recharts';
 
 interface LivingExpensesProps {
   salaryData: SalaryData;
   expenseData: ExpenseData;
   setExpenseData: (data: ExpenseData) => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const currencySymbols: { [key: string]: string } = {
@@ -93,8 +98,12 @@ const cityExpenseData: { [key: string]: {
   }
 };
 
-const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData, setExpenseData }) => {
+const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData, setExpenseData, userCurrency, countryCurrency }) => {
   const currencySymbol = currencySymbols[salaryData.currency] || salaryData.currency;
+
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const formatAmount = (amount: number) => `${countryCurrency || salaryData.currency}${amount.toLocaleString()}`;
+  const formatAmountSecondary = (amount: number) => showSecondaryCurrency ? ` (${userCurrency}${convertCurrency(amount, countryCurrency!, userCurrency!).toLocaleString()})` : '';
 
   const getCityInsights = (city: string) => {
     // Check for exact matches first
@@ -115,7 +124,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
     return null;
   };
 
-  const estimateExpenses = (country: string, city: string, grossSalary: number) => {
+  const estimateExpenses = useCallback((country: string, city: string, grossSalary: number) => {
     const cityData = getCityInsights(city);
     
     if (cityData) {
@@ -203,14 +212,14 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
       other,
       total
     };
-  };
+  }, []);
 
   useEffect(() => {
     if (salaryData.grossSalary > 0 && salaryData.country && salaryData.city) {
       const estimates = estimateExpenses(salaryData.country, salaryData.city, salaryData.grossSalary);
       setExpenseData(estimates);
     }
-  }, [salaryData, setExpenseData]);
+  }, [salaryData, setExpenseData, estimateExpenses]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(Math.round(num));
@@ -225,6 +234,41 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
   };
 
   const cityInsights = getCityInsights(salaryData.city);
+
+  // Prepare chart data
+  const pieChartData = [
+    { name: 'Rent', value: expenseData.rent, color: '#3B82F6' },
+    { name: 'Utilities', value: expenseData.utilities, color: '#10B981' },
+    { name: 'Food', value: expenseData.food, color: '#F59E0B' },
+    { name: 'Transport', value: expenseData.transport, color: '#EF4444' },
+    { name: 'Healthcare', value: expenseData.healthcare, color: '#8B5CF6' },
+    { name: 'Other', value: expenseData.other, color: '#6B7280' }
+  ].filter(item => item.value > 0);
+
+  const barChartData = [
+    { category: 'Rent', amount: expenseData.rent, color: '#3B82F6' },
+    { category: 'Utilities', amount: expenseData.utilities, color: '#10B981' },
+    { category: 'Food', amount: expenseData.food, color: '#F59E0B' },
+    { category: 'Transport', amount: expenseData.transport, color: '#EF4444' },
+    { category: 'Healthcare', amount: expenseData.healthcare, color: '#8B5CF6' },
+    { category: 'Other', amount: expenseData.other, color: '#6B7280' }
+  ];
+
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+    if (active && payload && payload.length && payload[0]?.value !== undefined && expenseData.total) {
+      const value = payload[0].value ?? 0;
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-medium">{label}</p>
+          <p className="text-blue-600">{formatAmount(value)}{formatAmountSecondary(value)}</p>
+          <p className="text-sm text-gray-600">
+            {((value / expenseData.total) * 100).toFixed(1)}% of total
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Card>
@@ -249,7 +293,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
                 <div className="flex justify-between">
                   <span className="text-blue-700">Rent Range:</span>
                   <span className="font-medium text-blue-800">
-                    {currencySymbol}{formatNumber(cityInsights.rent.min)} - {currencySymbol}{formatNumber(cityInsights.rent.max)}
+                    {formatAmount(cityInsights.rent.min)} - {formatAmount(cityInsights.rent.max)}
                   </span>
                 </div>
                 <p className="text-xs text-blue-600 italic">{cityInsights.rent.note}</p>
@@ -260,11 +304,82 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
 
         {expenseData.total > 0 && (
           <>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pie Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <PieChart className="w-4 h-4" />
+                    Expense Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <RechartsPieChart>
+                      <Pie
+                        data={pieChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {pieChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    {pieChartData.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Bar Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <BarChart3 className="w-4 h-4" />
+                    Expense Comparison
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={barChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="category" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        fontSize={10}
+                      />
+                      <YAxis fontSize={10} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="amount" fill="#3B82F6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Rent/Housing</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.rent)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.rent)}{formatAmountSecondary(expenseData.rent)}</span>
                 </div>
                 {cityInsights && (
                   <p className="text-xs text-gray-600 mb-1">{cityInsights.rent.note}</p>
@@ -281,7 +396,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Utilities</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.utilities)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.utilities)}{formatAmountSecondary(expenseData.utilities)}</span>
                 </div>
                 {cityInsights && (
                   <p className="text-xs text-gray-600 mb-1">{cityInsights.utilities.note}</p>
@@ -298,7 +413,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Food & Groceries</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.food)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.food)}{formatAmountSecondary(expenseData.food)}</span>
                 </div>
                 {cityInsights && (
                   <p className="text-xs text-gray-600 mb-1">{cityInsights.food.note}</p>
@@ -315,7 +430,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Transportation</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.transport)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.transport)}{formatAmountSecondary(expenseData.transport)}</span>
                 </div>
                 {cityInsights && (
                   <p className="text-xs text-gray-600 mb-1">{cityInsights.transport.note}</p>
@@ -332,7 +447,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Healthcare</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.healthcare)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.healthcare)}{formatAmountSecondary(expenseData.healthcare)}</span>
                 </div>
                 {cityInsights && (
                   <p className="text-xs text-gray-600 mb-1">{cityInsights.healthcare.note}</p>
@@ -349,7 +464,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Other Expenses</Label>
-                  <span className="text-sm font-medium">{currencySymbol}{formatNumber(expenseData.other)}</span>
+                  <span className="text-sm font-medium">{formatAmount(expenseData.other)}{formatAmountSecondary(expenseData.other)}</span>
                 </div>
                 <Slider
                   value={[expenseData.other]}
@@ -369,7 +484,7 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({ salaryData, expenseData
               <div className="flex justify-between items-center">
                 <span className="text-orange-700">Total Monthly Expenses:</span>
                 <span className="text-xl font-bold text-orange-600">
-                  {currencySymbol}{formatNumber(expenseData.total)}
+                  {formatAmount(expenseData.total)}{formatAmountSecondary(expenseData.total)}
                 </span>
               </div>
             </div>

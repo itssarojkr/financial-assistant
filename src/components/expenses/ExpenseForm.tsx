@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Plus, Save, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { ExpenseService, type CreateExpenseData, type ExpenseCategory } from '@/services';
+import { OptimizedExpenseService, type CreateExpenseData } from '@/infrastructure/services/OptimizedExpenseService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { ERROR } from '@/shared/constants/app.constants';
 
 interface ExpenseFormProps {
   expense?: {
@@ -45,14 +48,23 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     source: expense?.source || '',
     category_id: expense?.category_id || null,
   });
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const amountRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    if (amountRef.current) {
+      amountRef.current.focus();
+    }
+  }, []);
+
   const loadCategories = async () => {
     try {
-      const categoriesData = await ExpenseService.getCategories();
+      const categoriesData = await OptimizedExpenseService.getInstance().getCategories();
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -64,16 +76,17 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     setIsLoading(true);
-    
+    setError(null);
     try {
-      console.log('Submitting expense data:', formData);
       await onSave(formData);
-      console.log('Expense saved successfully');
-    } catch (error) {
-      console.error('Error saving expense:', error);
-      alert('Failed to save expense. Please try again.');
+      toast({
+        title: 'Expense saved',
+        description: 'Your expense has been saved successfully.',
+      });
+    } catch (err: unknown) {
+      const message = (typeof err === 'object' && err && 'message' in err) ? (err as { message?: string }).message : undefined;
+      setError(message || ERROR.MESSAGES.GENERIC);
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +102,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2" id="expense-form-title">
           {expense ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
           {expense ? 'Edit Expense' : 'Add Expense'}
         </CardTitle>
@@ -98,13 +111,19 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" role="form" aria-labelledby="expense-form-title" tabIndex={0}>
+          {error && (
+            <Alert variant="destructive" id="expense-error" aria-live="assertive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="amount" id="expense-amount-label">Amount</Label>
+            <div className="flex gap-2 flex-col sm:flex-row">
               <Input
                 id="amount"
+                ref={amountRef}
                 type="number"
                 step="0.01"
                 min="0"
@@ -113,12 +132,17 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 placeholder="0.00"
                 required
                 className="flex-1"
+                aria-describedby={error ? 'expense-error' : undefined}
+                aria-invalid={!!error}
+                aria-labelledby="expense-amount-label"
+                style={{ minHeight: '44px' }}
               />
               <Select
                 value={formData.currency}
                 onValueChange={(value) => handleInputChange('currency', value)}
+                aria-label="Currency"
               >
-                <SelectTrigger className="w-24">
+                <SelectTrigger className="w-24 min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -135,10 +159,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
           {/* Category */}
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category" id="expense-category-label">Category</Label>
             <Select
               value={formData.category_id !== null ? formData.category_id.toString() : 'none'}
               onValueChange={(value) => handleInputChange('category_id', value === 'none' ? null : parseInt(value))}
+              aria-labelledby="expense-category-label"
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
@@ -227,15 +252,15 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
             <Button 
               type="submit" 
               disabled={isLoading} 
-              className="flex-1"
+              className="flex-1 min-h-[44px]"
             >
               {isLoading ? 'Saving...' : (expense ? 'Update' : 'Add')}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className="min-h-[44px]">
               <X className="w-4 h-4" />
             </Button>
           </div>

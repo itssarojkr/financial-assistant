@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { BudgetForm } from './BudgetForm';
-import { BudgetService, type Budget, type BudgetProgress, type CreateBudgetData } from '@/services';
+import { BudgetService } from '@/application/services/BudgetService';
 
 interface BudgetListProps {
   budgets: Budget[];

@@ -24,7 +24,7 @@ export interface TaxCalculationParams {
   grossSalary: number;
   deductions: Record<string, number>;
   regime?: string;
-  additionalParams?: Record<string, any>;
+  additionalParams?: Record<string, unknown>;
 }
 
 export interface TaxCalculationResult {

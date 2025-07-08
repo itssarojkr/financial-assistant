@@ -2,18 +2,24 @@ import React from 'react';
 
 interface TaxSummaryCardProps {
   takeHome: number;
+  takeHomeSecondary?: number | undefined;
   effectiveTaxRate: number;
   userBracket?: number;
   viewMode: 'annual' | 'monthly';
   onToggleView: (mode: 'annual' | 'monthly') => void;
+  primaryCurrency: string;
+  secondaryCurrency?: string | undefined;
 }
 
-const TaxSummaryCard: React.FC<TaxSummaryCardProps> = ({ takeHome, effectiveTaxRate, userBracket, viewMode, onToggleView }) => (
+const TaxSummaryCard: React.FC<TaxSummaryCardProps> = ({ takeHome, takeHomeSecondary, effectiveTaxRate, userBracket, viewMode, onToggleView, primaryCurrency, secondaryCurrency }) => (
   <div className="mb-4">
     <div className="bg-gradient-to-r from-blue-50 to-green-50 border-blue-100 rounded p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <div className="text-lg font-semibold text-blue-800 flex items-center gap-2">
-          {viewMode === 'monthly' ? 'Monthly' : 'Annual'} Take-Home: <span className="text-green-700">₹{takeHome.toLocaleString()}</span>
+          {viewMode === 'monthly' ? 'Monthly' : 'Annual'} Take-Home: <span className="text-green-700">{primaryCurrency}{(takeHome || 0).toLocaleString()}</span>
+          {secondaryCurrency && takeHomeSecondary !== undefined && (
+            <span className="ml-2 text-green-600">({secondaryCurrency}{takeHomeSecondary.toLocaleString()})</span>
+          )}
         </div>
         <div className="text-sm text-gray-600 mt-1">
           Effective Tax Rate: <span className="font-medium text-blue-700">{effectiveTaxRate.toFixed(1)}%</span>

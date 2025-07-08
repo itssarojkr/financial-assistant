@@ -23,11 +23,15 @@ const Landing: React.FC = () => {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate('/calculator');
+    navigate('/tax-calculator');
   };
 
   const handleSignIn = () => {
-    navigate('/auth');
+    navigate('/login');
+  };
+
+  const handleSignUp = () => {
+    navigate('/signup');
   };
 
   const features = [
@@ -110,7 +114,7 @@ const Landing: React.FC = () => {
             </div>
             <div className="flex items-center space-x-4">
               {user ? (
-                <Button onClick={() => navigate('/calculator')} variant="outline">
+                <Button onClick={() => navigate('/tax-calculator')} variant="outline">
                   Calculator
                 </Button>
               ) : (
@@ -122,8 +126,8 @@ const Landing: React.FC = () => {
                   <Button onClick={handleSignIn} variant="ghost">
                     Sign In
                   </Button>
-                  <Button onClick={handleSignIn}>
-                    Get Started
+                  <Button onClick={handleSignUp}>
+                    Sign Up
                   </Button>
                 </>
               )}
@@ -163,12 +167,12 @@ const Landing: React.FC = () => {
               </Button>
               {!user && (
                 <Button 
-                  onClick={handleSignIn} 
+                  onClick={handleSignUp} 
                   variant="outline" 
                   size="lg" 
                   className="text-lg px-8 py-6 border-2 hover:bg-gray-50 transition-all duration-300"
                 >
-                  Sign In to Save
+                  Sign Up Free
                 </Button>
               )}
             </div>
@@ -242,7 +246,7 @@ const Landing: React.FC = () => {
                 </Button>
                 {!user && (
                   <Button 
-                    onClick={handleSignIn} 
+                    onClick={handleSignUp} 
                     size="lg" 
                     variant="outline"
                     className="text-lg px-8 py-6 border-white text-white hover:bg-white hover:text-blue-600"

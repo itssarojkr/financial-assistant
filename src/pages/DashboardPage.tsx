@@ -28,10 +28,10 @@ const DashboardPage: React.FC = () => {
                   Track your expenses, manage budgets, and get insights into your spending patterns.
                 </p>
                 <div className="flex gap-4 justify-center">
-                  <Button onClick={() => navigate('/auth')}>
+                  <Button onClick={() => navigate('/login')}>
                     Sign In
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/calculator')}>
+                  <Button variant="outline" onClick={() => navigate('/tax-calculator')}>
                     Try Calculator
                   </Button>
                 </div>

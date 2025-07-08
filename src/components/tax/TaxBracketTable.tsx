@@ -12,8 +12,10 @@ interface TaxBracketTableProps {
   taxableIncome: number;
   viewMode: 'annual' | 'monthly';
   currencySymbol: string;
+  secondaryCurrency?: string | undefined;
   userBracketIdx: number;
   getValue: (val: number) => number;
+  getValueSecondary?: ((val: number) => number) | undefined;
 }
 
 const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(Math.round(num));
@@ -22,7 +24,7 @@ const formatBracketRange = (min: number, max: number | null, currency: string) =
   return `${currency}${formatNumber(min)} - ${currency}${formatNumber(max)}`;
 };
 
-const TaxBracketTable: React.FC<TaxBracketTableProps> = ({ brackets, taxableIncome, viewMode, currencySymbol, userBracketIdx, getValue }) => (
+const TaxBracketTable: React.FC<TaxBracketTableProps> = ({ brackets, taxableIncome, viewMode, currencySymbol, secondaryCurrency, userBracketIdx, getValue, getValueSecondary }) => (
   <div className="mt-8">
     <div className="bg-white rounded-xl shadow-md p-6 overflow-x-auto">
       <table className="min-w-full text-sm border rounded-lg">
@@ -57,10 +59,31 @@ const TaxBracketTable: React.FC<TaxBracketTableProps> = ({ brackets, taxableInco
                   transform: isUserBracket ? 'scale(1.02) translateY(-2px)' : 'scale(1) translateY(0)',
                 }}
               >
-                <td className="px-4 py-2 whitespace-nowrap">{formatBracketRange(bracket.min, bracket.max, currencySymbol)}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {formatBracketRange(bracket.min, bracket.max, currencySymbol)}
+                  {secondaryCurrency && getValueSecondary && (
+                    <span className="ml-2 text-green-700">
+                      ({formatBracketRange(getValueSecondary(bracket.min), getValueSecondary(bracket.max ?? 0), secondaryCurrency)})
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 whitespace-nowrap">{(bracket.rate * 100).toFixed(1)}%</td>
-                <td className="px-4 py-2 whitespace-nowrap">{currencySymbol}{formatNumber(getValue(incomeTaxed))}</td>
-                <td className="px-4 py-2 whitespace-nowrap">{currencySymbol}{formatNumber(getValue(bracket.taxPaid))}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {currencySymbol}{formatNumber(getValue(incomeTaxed))}
+                  {secondaryCurrency && getValueSecondary && (
+                    <span className="ml-2 text-green-700">
+                      ({secondaryCurrency}{formatNumber(getValueSecondary(incomeTaxed))})
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {currencySymbol}{formatNumber(getValue(bracket.taxPaid))}
+                  {secondaryCurrency && getValueSecondary && (
+                    <span className="ml-2 text-green-700">
+                      ({secondaryCurrency}{formatNumber(getValueSecondary(bracket.taxPaid))})
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}

@@ -15,7 +15,8 @@ import {
   Clock
 } from 'lucide-react';
 import { AlertForm } from './AlertForm';
-import { AlertService, type SpendingAlert, type CreateAlertData } from '@/services';
+import { AlertService } from '@/application/services/AlertService';
+import { useToast } from '@/hooks/use-toast';
 
 interface AlertListProps {
   alerts: SpendingAlert[];
@@ -30,39 +31,42 @@ export const AlertList: React.FC<AlertListProps> = ({
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<SpendingAlert | null>(null);
+  const { toast } = useToast();
 
   const handleAddAlert = async (alertData: CreateAlertData) => {
     try {
       await AlertService.createAlert(userId, alertData);
       setIsAddDialogOpen(false);
       onAlertUpdate();
-    } catch (error) {
-      console.error('Error adding alert:', error);
+      toast({ title: 'Alert added', description: 'Your alert has been added successfully.' });
+    } catch (error: unknown) {
+      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
+      toast({ title: 'Error adding alert', description: message || 'Failed to add alert.', variant: 'destructive' });
     }
   };
 
   const handleEditAlert = async (alertData: CreateAlertData) => {
     if (!editingAlert) return;
-    
     try {
       await AlertService.updateAlert(editingAlert.id, alertData);
       setEditingAlert(null);
       onAlertUpdate();
-    } catch (error) {
-      console.error('Error updating alert:', error);
-      alert('Failed to update alert. Please try again.');
+      toast({ title: 'Alert updated', description: 'Your alert has been updated successfully.' });
+    } catch (error: unknown) {
+      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
+      toast({ title: 'Error updating alert', description: message || 'Failed to update alert.', variant: 'destructive' });
     }
   };
 
   const handleDeleteAlert = async (alertId: string) => {
     if (!confirm('Are you sure you want to delete this alert?')) return;
-    
     try {
       await AlertService.deleteAlert(alertId);
       onAlertUpdate();
-    } catch (error) {
-      console.error('Error deleting alert:', error);
-      alert('Failed to delete alert. Please try again.');
+      toast({ title: 'Alert deleted', description: 'Your alert has been deleted.' });
+    } catch (error: unknown) {
+      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
+      toast({ title: 'Error deleting alert', description: message || 'Failed to delete alert.', variant: 'destructive' });
     }
   };
 
@@ -70,9 +74,10 @@ export const AlertList: React.FC<AlertListProps> = ({
     try {
       await AlertService.updateAlert(alertId, { active });
       onAlertUpdate();
-    } catch (error) {
-      console.error('Error toggling alert:', error);
-      alert('Failed to update alert status. Please try again.');
+      toast({ title: 'Alert status updated', description: 'Alert status has been updated.' });
+    } catch (error: unknown) {
+      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
+      toast({ title: 'Error updating alert status', description: message || 'Failed to update alert status.', variant: 'destructive' });
     }
   };
 

@@ -11,7 +11,8 @@ import {
   Target,
   Bell
 } from 'lucide-react';
-import { AnalyticsService, type SpendingInsights } from '@/services';
+import { AnalyticsService } from '@/application/services/AnalyticsService';
+import type { SpendingInsights } from '@/application/services/AnalyticsService';
 
 interface ExpenseAnalyticsProps {
   analytics: SpendingInsights;

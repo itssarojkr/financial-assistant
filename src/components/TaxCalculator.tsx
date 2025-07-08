@@ -9,6 +9,7 @@ import TaxCalculatorBrazil from './tax/TaxCalculatorBrazil';
 import TaxCalculatorSouthAfrica from './tax/TaxCalculatorSouthAfrica';
 import StrategyBasedTaxCalculator from './tax/StrategyBasedTaxCalculator';
 import { SalaryData, TaxData } from '@/pages/Index';
+import { convertCurrency } from '@/lib/utils';
 
 interface TaxCalculatorProps {
   salaryData: SalaryData;
@@ -33,47 +34,91 @@ interface TaxCalculatorProps {
   setChurchTaxRate?: (rate: number) => void;
   age?: number;
   setAge?: (age: number) => void;
+  grossSalaryCountryCurrency?: number;
+  countryCurrency?: string;
+  userCurrency?: string;
 }
 
 const TaxCalculator = (props: TaxCalculatorProps) => {
   const { salaryData } = props;
   
-  console.log('TaxCalculator rendered with country:', salaryData.country);
+  console.log('TaxCalculator rendered with country:', salaryData.country, 'countryCode:', salaryData.countryCode);
   
-  // Use StrategyBasedTaxCalculator for countries with strategy implementations
-  switch (salaryData.country) {
-    case 'India':
-      console.log('Using original TaxCalculatorIndia');
-      return <TaxCalculatorIndia {...props} />;
-    case 'United States':
-      console.log('Using original TaxCalculatorUS');
-      return <TaxCalculatorUS {...props} />;
-    case 'Canada':
-      console.log('Using StrategyBasedTaxCalculator for Canada');
-      return <StrategyBasedTaxCalculator {...props} countryCode="CA" />;
-    case 'United Kingdom':
-    case 'UK':
-      console.log('Using StrategyBasedTaxCalculator for UK');
-      return <StrategyBasedTaxCalculator {...props} countryCode="UK" />;
-    case 'Australia':
-      console.log('Using StrategyBasedTaxCalculator for Australia');
-      return <StrategyBasedTaxCalculator {...props} countryCode="AU" />;
-    case 'Germany':
-      console.log('Using StrategyBasedTaxCalculator for Germany');
-      return <StrategyBasedTaxCalculator {...props} countryCode="DE" />;
-    case 'France':
-      console.log('Using StrategyBasedTaxCalculator for France');
-      return <StrategyBasedTaxCalculator {...props} countryCode="FR" />;
-    case 'Brazil':
-      console.log('Using StrategyBasedTaxCalculator for Brazil');
-      return <StrategyBasedTaxCalculator {...props} countryCode="BR" />;
-    case 'South Africa':
-      console.log('Using StrategyBasedTaxCalculator for South Africa');
-      return <StrategyBasedTaxCalculator {...props} countryCode="ZA" />;
-    default:
-      console.log('No calculator found for country:', salaryData.country);
-      return <div className="p-4 text-gray-500">Tax calculation for {salaryData.country} coming soon.</div>;
-  }
+  // Compute the converted salary for tax calculation
+  const getDefaultCurrencyForCountry = (countryId: string): string => {
+    // Since CountrySelector already sets the correct currency for each country,
+    // we can use the current currency as the country's default
+    return salaryData.currency;
+  };
+  const countryCurrency = getDefaultCurrencyForCountry(salaryData.country);
+  const grossSalaryCountryCurrency = convertCurrency(salaryData.grossSalary, salaryData.currency, countryCurrency);
+
+  // Create a salaryData object for calculators, always in country currency
+  const salaryDataForCalc = {
+    ...salaryData,
+    grossSalary: grossSalaryCountryCurrency,
+    currency: countryCurrency,
+  };
+
+  // Pass the converted salary and currency info to calculators
+  const calculatorProps = {
+    ...props,
+    grossSalaryCountryCurrency,
+    countryCurrency,
+    userCurrency: salaryData.currency,
+  };
+
+  // Map country codes to tax calculators
+  const countryCodeToCalculator = (countryCode: string) => {
+    switch (countryCode) {
+      case 'IN': // India
+        return (
+          <TaxCalculatorIndia
+            salaryData={salaryDataForCalc}
+            taxData={props.taxData}
+            setTaxData={props.setTaxData}
+            onNext={props.onNext}
+            indiaRegime={props.indiaRegime!}
+            setIndiaRegime={props.setIndiaRegime!}
+            userCurrency={salaryData.currency}
+            countryCurrency={countryCurrency}
+          />
+        );
+      case 'US': // United States
+        return (
+          <TaxCalculatorUS
+            salaryData={salaryDataForCalc}
+            taxData={props.taxData}
+            setTaxData={props.setTaxData}
+            onNext={props.onNext}
+            usFilingStatus={props.usFilingStatus!}
+            setUsFilingStatus={props.setUsFilingStatus!}
+            usState={props.usState!}
+            setUsState={props.setUsState!}
+          />
+        );
+      case 'CA': // Canada
+      case 'GB': // United Kingdom
+      case 'AU': // Australia
+      case 'DE': // Germany
+      case 'FR': // France
+      case 'BR': // Brazil
+      case 'ZA': // South Africa
+        return (
+          <StrategyBasedTaxCalculator
+            salaryData={salaryDataForCalc}
+            taxData={props.taxData}
+            setTaxData={props.setTaxData}
+            onNext={props.onNext}
+          />
+        );
+      default:
+        console.log('No calculator found for country code:', countryCode);
+        return <div className="p-4 text-gray-500">Tax calculation for country code {countryCode} coming soon.</div>;
+    }
+  };
+
+  return countryCodeToCalculator(salaryData.countryCode);
 };
 
 export default TaxCalculator;

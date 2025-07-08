@@ -373,7 +373,7 @@ const Help: React.FC = () => {
                   ))}
                 </div>
                 <div className="mt-6 text-center">
-                  <Button onClick={() => navigate('/calculator')} size="lg">
+                  <Button onClick={() => navigate('/tax-calculator')} size="lg">
                     Start Calculating Now
                     <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
@@ -755,7 +755,7 @@ const Help: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
-                onClick={() => navigate('/calculator')} 
+                onClick={() => navigate('/tax-calculator')} 
                 variant="secondary" 
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100"

@@ -6,11 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Wallet, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { SalaryData, TaxData, ExpenseData } from '@/pages/Index';
+import { convertCurrency } from '@/lib/utils';
 
 interface SavingsAnalysisProps {
   salaryData: SalaryData;
   taxData: TaxData;
   expenseData: ExpenseData;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const currencySymbols: { [key: string]: string } = {
@@ -26,9 +29,13 @@ const currencySymbols: { [key: string]: string } = {
 
 type SpendingHabit = 'conservative' | 'moderate' | 'liberal';
 
-const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, expenseData }) => {
+const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, expenseData, userCurrency, countryCurrency }) => {
   const [spendingHabit, setSpendingHabit] = useState<SpendingHabit>('moderate');
   const currencySymbol = currencySymbols[salaryData.currency] || salaryData.currency;
+
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const formatAmount = (amount: number) => `${countryCurrency || salaryData.currency}${Math.round(amount).toLocaleString()}`;
+  const formatAmountSecondary = (amount: number) => showSecondaryCurrency ? ` (${userCurrency}${Math.round(convertCurrency(amount, countryCurrency!, userCurrency!)).toLocaleString()})` : '';
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(Math.round(num));
@@ -136,7 +143,7 @@ const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, 
                 <div className="text-center">
                   <p className="text-sm text-green-600 font-medium">Monthly Take-Home</p>
                   <p className="text-xl font-bold text-green-700">
-                    {currencySymbol}{formatNumber(savings.monthlyTakeHome)}
+                    {formatAmount(savings.monthlyTakeHome)}{formatAmountSecondary(savings.monthlyTakeHome)}
                   </p>
                 </div>
               </div>
@@ -145,7 +152,7 @@ const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, 
                 <div className="text-center">
                   <p className="text-sm text-red-600 font-medium">Monthly Expenses</p>
                   <p className="text-xl font-bold text-red-700">
-                    {currencySymbol}{formatNumber(savings.adjustedExpenses)}
+                    {formatAmount(savings.adjustedExpenses)}{formatAmountSecondary(savings.adjustedExpenses)}
                   </p>
                 </div>
               </div>
@@ -154,7 +161,7 @@ const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, 
                 <div className="text-center">
                   <p className="text-sm text-blue-600 font-medium">Monthly Savings</p>
                   <p className="text-xl font-bold text-blue-700">
-                    {currencySymbol}{formatNumber(Math.max(0, savings.monthlySavings))}
+                    {formatAmount(Math.max(0, savings.monthlySavings))}{formatAmountSecondary(Math.max(0, savings.monthlySavings))}
                   </p>
                 </div>
               </div>
@@ -204,7 +211,7 @@ const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, 
                 </div>
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-center text-green-800">
-                    <strong>Annual Savings Potential:</strong> {currencySymbol}{formatNumber(Math.max(0, savings.annualSavings))}
+                    <strong>Annual Savings Potential:</strong> {currencySymbol}{formatAmount(Math.max(0, savings.annualSavings))}{formatAmountSecondary(Math.max(0, savings.annualSavings))}
                   </p>
                 </div>
               </div>
@@ -217,7 +224,7 @@ const SavingsAnalysis: React.FC<SavingsAnalysisProps> = ({ salaryData, taxData, 
                   <div>
                     <p className="font-medium text-red-800 mb-2">Budget Deficit Warning</p>
                     <p className="text-sm text-red-700">
-                      Your estimated expenses exceed your take-home income by {currencySymbol}{formatNumber(Math.abs(savings.monthlySavings))} per month. 
+                      Your estimated expenses exceed your take-home income by {currencySymbol}{formatAmount(Math.abs(savings.monthlySavings))}{formatAmountSecondary(Math.abs(savings.monthlySavings))} per month. 
                       Consider reducing expenses or increasing income to achieve financial stability.
                     </p>
                   </div>

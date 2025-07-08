@@ -25,7 +25,8 @@ export const useTaxCalculator = (initialSalary: number = 0) => {
   const [deductions, setDeductions] = useState<DeductionState>({});
 
   // Memoized getValue function
-  const getValue = useCallback((val: number) => {
+  const getValue = useCallback((val: number | undefined) => {
+    if (val === undefined || val === null) return 0;
     return viewMode === 'monthly' ? val / 12 : val;
   }, [viewMode]);
 

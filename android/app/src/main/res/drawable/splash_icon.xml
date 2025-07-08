@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Background circle -->
+    <path
+        android:fillColor="@color/splash_icon_background"
+        android:pathData="M54,54m-48,0a48,48 0,1 1,96 0a48,48 0,1 1,-96 0" />
+    
+    <!-- Calculator icon -->
+    <path
+        android:fillColor="@color/colorSurface"
+        android:pathData="M30,20h48c2.2,0 4,1.8 4,4v40c0,2.2 -1.8,4 -4,4H30c-2.2,0 -4,-1.8 -4,-4V24C26,21.8 27.8,20 30,20z" />
+    
+    <!-- Calculator screen -->
+    <path
+        android:fillColor="@color/colorPrimary"
+        android:pathData="M32,24h44v8H32V24z" />
+    
+    <!-- Calculator buttons -->
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M32,36h10v8H32V36z" />
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M46,36h10v8H46V36z" />
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M60,36h10v8H60V36z" />
+    
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M32,48h10v8H32V48z" />
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M46,48h10v8H46V48z" />
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M60,48h10v8H60V48z" />
+    
+    <!-- Dollar sign -->
+    <path
+        android:fillColor="@color/colorSurface"
+        android:pathData="M48,42h2v2h-2V42zM48,44h2v2h-2V44zM48,46h2v2h-2V46zM48,48h2v2h-2V48zM48,50h2v2h-2V50z" />
+    <path
+        android:fillColor="@color/colorSurface"
+        android:pathData="M50,40h2v2h-2V40zM50,42h2v2h-2V42zM50,44h2v2h-2V44zM50,46h2v2h-2V46zM50,48h2v2h-2V48zM50,50h2v2h-2V50zM50,52h2v2h-2V52z" />
+</vector> 

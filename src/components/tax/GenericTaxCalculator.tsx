@@ -7,6 +7,10 @@ import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
 
+interface AdditionalParams {
+  [key: string]: string | number | boolean;
+}
+
 interface GenericTaxCalculatorProps {
   salaryData: SalaryData;
   taxData: TaxData;
@@ -21,11 +25,11 @@ interface GenericTaxCalculatorProps {
   calculateTax: (params: {
     grossSalary: number;
     deductions: Record<string, number>;
-    additionalParams?: Record<string, any>;
+    additionalParams?: AdditionalParams;
   }) => TaxCalculationResult;
   // Additional country-specific props
-  additionalParams?: Record<string, any>;
-  onAdditionalParamsChange?: (params: Record<string, any>) => void;
+  additionalParams?: AdditionalParams;
+  onAdditionalParamsChange?: (params: AdditionalParams) => void;
 }
 
 interface TaxCalculationResult {
@@ -183,7 +187,7 @@ const GenericTaxCalculator: React.FC<GenericTaxCalculatorProps> = ({
         
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{currencySymbol}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
 
         {/* Display deductions if any */}

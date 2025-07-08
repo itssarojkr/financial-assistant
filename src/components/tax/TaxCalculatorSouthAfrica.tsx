@@ -8,12 +8,15 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
 
 interface TaxCalculatorSouthAfricaProps {
   salaryData: SalaryData;
   taxData: TaxData;
   setTaxData: (data: TaxData) => void;
   onNext: () => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const SA_BRACKETS = [
@@ -31,7 +34,7 @@ const TERTIARY_REBATE = 3144; // 2024/25 tertiary rebate (75+ years)
 const UIF_RATE = 0.01;
 const MAX_UIF = 177.12 * 12;
 
-const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ salaryData, taxData, setTaxData, onNext }) => {
+const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ salaryData, taxData, setTaxData, onNext, userCurrency, countryCurrency }) => {
   const {
     viewMode,
     showAdvanced,
@@ -139,7 +142,8 @@ const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ sal
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = 'R';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
 
   return (
     <div>
@@ -151,7 +155,7 @@ const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ sal
         currentTaxData={taxData}
         whatIfTaxData={whatIfTaxData}
         currentSalary={salaryData.grossSalary}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || 'R'}
         showCalculationModal={showCalculationModal}
         onToggleCalculationModal={() => setShowCalculationModal(!showCalculationModal)}
         countryName="South Africa"
@@ -166,41 +170,47 @@ const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ sal
         description="Deductions reduce your taxable income before tax calculation."
       />
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || 'R'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
       <div className="space-y-3 mt-6">
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {countryCurrency || 'R'}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{countryCurrency || 'R'}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
         {totalDeductions > 0 && (
           <div className="flex justify-between text-sm text-blue-700">
             <span>Total Deductions</span>
-            <span className="font-medium">-{currencySymbol}{totalDeductions.toLocaleString()}</span>
+            <span className="font-medium">-{countryCurrency || 'R'}{totalDeductions.toLocaleString()}</span>
           </div>
         )}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Income Tax (Before Rebate)</span>
-            <span className="font-medium">{currencySymbol}{(getValue(taxData.federalTax) + PRIMARY_REBATE).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || 'R'}{(getValue(taxData.federalTax) + PRIMARY_REBATE).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm text-green-700">
             <span>Primary Rebate</span>
-            <span className="font-medium">-{currencySymbol}{PRIMARY_REBATE.toLocaleString()}</span>
+            <span className="font-medium">-{countryCurrency || 'R'}{PRIMARY_REBATE.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm font-medium border-t pt-1">
             <span>Income Tax (After Rebate)</span>
-            <span>{currencySymbol}{getValue(taxData.federalTax).toLocaleString()}</span>
+            <span>{countryCurrency || 'R'}{getValue(taxData.federalTax).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>UIF (Unemployment Insurance Fund)</span>
@@ -215,7 +225,7 @@ const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ sal
                 <p>UIF is 1% of salary up to a maximum of R2,125.44 per year</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.socialSecurity).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || 'R'}{getValue(taxData.socialSecurity).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -223,9 +233,11 @@ const TaxCalculatorSouthAfrica: React.FC<TaxCalculatorSouthAfricaProps> = ({ sal
         brackets={taxData.brackets || []}
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || 'R'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
       <div className="mt-6 flex justify-end">
         <button

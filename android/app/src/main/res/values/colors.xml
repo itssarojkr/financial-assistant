@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors -->
+    <color name="colorPrimary">#3B82F6</color>
+    <color name="colorPrimaryDark">#1D4ED8</color>
+    <color name="colorAccent">#10B981</color>
+    
+    <!-- Surface colors -->
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#1F2937</color>
+    <color name="colorSurfaceDark">#1F2937</color>
+    <color name="colorOnSurfaceDark">#F9FAFB</color>
+    
+    <!-- Splash screen colors -->
+    <color name="splash_background">#FFFFFF</color>
+    <color name="splash_icon_background">#3B82F6</color>
+    
+    <!-- Additional Material Design 3 colors -->
+    <color name="primary">#3B82F6</color>
+    <color name="onPrimary">#FFFFFF</color>
+    <color name="primaryContainer">#DBEAFE</color>
+    <color name="onPrimaryContainer">#1E3A8A</color>
+    
+    <color name="secondary">#10B981</color>
+    <color name="onSecondary">#FFFFFF</color>
+    <color name="secondaryContainer">#D1FAE5</color>
+    <color name="onSecondaryContainer">#064E3B</color>
+    
+    <color name="tertiary">#8B5CF6</color>
+    <color name="onTertiary">#FFFFFF</color>
+    <color name="tertiaryContainer">#EDE9FE</color>
+    <color name="onTertiaryContainer">#4C1D95</color>
+    
+    <color name="error">#EF4444</color>
+    <color name="onError">#FFFFFF</color>
+    <color name="errorContainer">#FEE2E2</color>
+    <color name="onErrorContainer">#7F1D1D</color>
+    
+    <color name="background">#FFFFFF</color>
+    <color name="onBackground">#1F2937</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="onSurface">#1F2937</color>
+    <color name="surfaceVariant">#F3F4F6</color>
+    <color name="onSurfaceVariant">#6B7280</color>
+    
+    <color name="outline">#D1D5DB</color>
+    <color name="outlineVariant">#E5E7EB</color>
+    
+    <!-- Dark theme colors -->
+    <color name="backgroundDark">#111827</color>
+    <color name="onBackgroundDark">#F9FAFB</color>
+    <color name="surfaceDark">#1F2937</color>
+    <color name="onSurfaceDark">#F9FAFB</color>
+    <color name="surfaceVariantDark">#374151</color>
+    <color name="onSurfaceVariantDark">#9CA3AF</color>
+    
+    <color name="outlineDark">#4B5563</color>
+    <color name="outlineVariantDark">#6B7280</color>
+</resources> 

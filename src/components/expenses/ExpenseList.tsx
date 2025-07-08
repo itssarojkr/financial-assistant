@@ -19,7 +19,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ExpenseForm } from './ExpenseForm';
-import { ExpenseService, type Expense, type ExpenseCategory, type CreateExpenseData } from '@/services';
+import { ExpenseService } from '@/application/services/ExpenseService';
+import type { ExpenseCategory } from '@/core/domain/enums/ExpenseCategory';
+import { OptimizedExpenseService, type Expense, type CreateExpenseData } from '@/infrastructure/services/OptimizedExpenseService';
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -53,7 +55,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
 
   const handleAddExpense = async (expenseData: CreateExpenseData) => {
     try {
-      await ExpenseService.createExpense(userId, expenseData);
+      await OptimizedExpenseService.getInstance().createExpense(userId, expenseData);
       setIsAddDialogOpen(false);
       onExpenseUpdate();
     } catch (error) {
@@ -66,7 +68,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     if (!editingExpense) return;
     
     try {
-      await ExpenseService.updateExpense(editingExpense.id, expenseData);
+      await OptimizedExpenseService.getInstance().updateExpense(editingExpense.id, expenseData);
       setEditingExpense(null);
       onExpenseUpdate();
     } catch (error) {
@@ -79,7 +81,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     if (!confirm('Are you sure you want to delete this expense?')) return;
     
     try {
-      await ExpenseService.deleteExpense(expenseId);
+      await OptimizedExpenseService.getInstance().deleteExpense(expenseId);
       onExpenseUpdate();
     } catch (error) {
       console.error('Error deleting expense:', error);

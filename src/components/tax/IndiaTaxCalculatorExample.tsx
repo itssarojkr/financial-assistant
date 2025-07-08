@@ -4,6 +4,10 @@ import GenericTaxCalculator from './GenericTaxCalculator';
 import { DeductionField } from './AdvancedOptions';
 import { Switch } from '../ui/switch';
 
+interface IndiaAdditionalParams {
+  regime?: 'new' | 'old';
+}
+
 interface IndiaTaxCalculatorExampleProps {
   salaryData: SalaryData;
   taxData: TaxData;
@@ -44,7 +48,7 @@ const IndiaTaxCalculatorExample: React.FC<IndiaTaxCalculatorExampleProps> = ({
   const calculateIndiaTax = useCallback((params: {
     grossSalary: number;
     deductions: Record<string, number>;
-    additionalParams?: Record<string, any>;
+    additionalParams?: IndiaAdditionalParams;
   }) => {
     const { grossSalary, deductions, additionalParams = {} } = params;
     const regime = additionalParams.regime || 'new';

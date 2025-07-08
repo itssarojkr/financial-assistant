@@ -65,6 +65,11 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+const sanitizeCSS = (css: string) => {
+  // Allow only safe CSS characters (letters, numbers, dashes, colons, semicolons, spaces, curly braces, and newlines)
+  return css.replace(/[^a-zA-Z0-9\-:;{}\s\n.#\[\]\(\),%]/g, '');
+};
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([_, config]) => config.theme || config.color
@@ -74,12 +79,9 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+  const rawCSS = Object.entries(THEMES)
+    .map(
+      ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
@@ -91,11 +93,18 @@ ${colorConfig
   .join("\n")}
 }
 `
-          )
-          .join("\n"),
+    )
+    .join("\n");
+
+  const safeCSS = sanitizeCSS(rawCSS);
+
+  return (
+    <style
+      dangerouslySetInnerHTML={{
+        __html: safeCSS,
       }}
     />
-  )
+  );
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip

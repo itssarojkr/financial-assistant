@@ -9,6 +9,11 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
+
+interface IndiaAdditionalParams {
+  regime?: 'new' | 'old';
+}
 
 interface TaxCalculatorIndiaProps {
   salaryData: SalaryData;
@@ -17,6 +22,8 @@ interface TaxCalculatorIndiaProps {
   onNext: () => void;
   indiaRegime: 'new' | 'old';
   setIndiaRegime: (regime: 'new' | 'old') => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const OLD_REGIME_BRACKETS = [
@@ -52,7 +59,9 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
   setTaxData, 
   onNext, 
   indiaRegime, 
-  setIndiaRegime 
+  setIndiaRegime,
+  userCurrency,
+  countryCurrency
 }) => {
   // Use the reusable tax calculator hook
   const {
@@ -103,7 +112,7 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
   const calculateIndiaTax = useCallback((params: {
     grossSalary: number;
     deductions: Record<string, number>;
-    additionalParams?: Record<string, any>;
+    additionalParams?: IndiaAdditionalParams;
   }) => {
     const { grossSalary, deductions, additionalParams = {} } = params;
     const regime = additionalParams.regime || indiaRegime;
@@ -229,7 +238,14 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = '₹';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
+  const federalTaxUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.federalTax || 0, countryCurrency!, userCurrency!) : null;
+  const cessUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.cess || 0, countryCurrency!, userCurrency!) : null;
+  const surchargeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.surcharge || 0, countryCurrency!, userCurrency!) : null;
+
+  const currencySymbol = countryCurrency || '₹';
 
   return (
     <div>
@@ -285,11 +301,14 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
 
       {/* Tax Summary Card - Reusable component */}
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || 'INR'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
 
       {/* Tax Breakdown - Country-specific display */}
@@ -297,13 +316,16 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {currencySymbol}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{currencySymbol}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
 
         {/* Display deductions if any */}
@@ -333,7 +355,7 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Income Tax</span>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.federalTax).toLocaleString()}</span>
+            <span className="font-medium">{currencySymbol}{(getValue(taxData.federalTax || 0)).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Health & Education Cess</span>
@@ -348,18 +370,18 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
                 <p>4% of income tax after rebate</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.cess || 0).toLocaleString()}</span>
+            <span className="font-medium">{currencySymbol}{(getValue(taxData.cess || 0)).toLocaleString()}</span>
           </div>
           {taxData.surcharge ? (
             <div className="flex justify-between text-sm">
               <span>Surcharge</span>
-              <span className="font-medium">{currencySymbol}{getValue(taxData.surcharge).toLocaleString()}</span>
+              <span className="font-medium">{currencySymbol}{(getValue(taxData.surcharge || 0)).toLocaleString()}</span>
             </div>
           ) : null}
-          {(taxData.taxableIncome <= (indiaRegime === 'old' ? SECTION_87A_LIMIT : SECTION_87A_NEW_LIMIT)) && (taxData.federalTax > 0) && (
+          {(taxData.taxableIncome <= (indiaRegime === 'old' ? SECTION_87A_LIMIT : SECTION_87A_NEW_LIMIT)) && ((taxData.federalTax || 0) > 0) && (
             <div className="flex justify-between text-sm text-green-700">
               <span>Section 87A Rebate</span>
-              <span className="font-medium">-{currencySymbol}{Math.min(taxData.federalTax, (indiaRegime === 'old' ? SECTION_87A_REBATE : SECTION_87A_NEW_REBATE)).toLocaleString()}</span>
+              <span className="font-medium">-{currencySymbol}{Math.min((taxData.federalTax || 0), (indiaRegime === 'old' ? SECTION_87A_REBATE : SECTION_87A_NEW_REBATE)).toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -371,8 +393,10 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
         currencySymbol={currencySymbol}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
 
       {/* Continue Button */}

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Quick Add Expense -->
+    <shortcut
+        android:shortcutId="add_expense"
+        android:enabled="true"
+        android:icon="@drawable/ic_add_expense"
+        android:shortcutShortLabel="@string/shortcut_add_expense"
+        android:shortcutLongLabel="@string/shortcut_add_expense_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://add-expense" />
+    </shortcut>
+
+    <!-- View Dashboard -->
+    <shortcut
+        android:shortcutId="dashboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_dashboard"
+        android:shortcutShortLabel="@string/shortcut_dashboard"
+        android:shortcutLongLabel="@string/shortcut_dashboard_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://dashboard" />
+    </shortcut>
+
+    <!-- Tax Calculator -->
+    <shortcut
+        android:shortcutId="tax_calculator"
+        android:enabled="true"
+        android:icon="@drawable/ic_tax_calculator"
+        android:shortcutShortLabel="@string/shortcut_tax_calculator"
+        android:shortcutLongLabel="@string/shortcut_tax_calculator_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://tax-calculator" />
+    </shortcut>
+
+    <!-- Budget Overview -->
+    <shortcut
+        android:shortcutId="budget_overview"
+        android:enabled="true"
+        android:icon="@drawable/ic_budget"
+        android:shortcutShortLabel="@string/shortcut_budget"
+        android:shortcutLongLabel="@string/shortcut_budget_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://budget-overview" />
+    </shortcut>
+
+</shortcuts> 

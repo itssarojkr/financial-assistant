@@ -12,10 +12,21 @@ const config: CapacitorConfig = {
       launchShowDuration: 3000,
       backgroundColor: "#ffffff",
       showSpinner: true,
-      spinnerColor: "#3b82f6"
+      spinnerColor: "#3b82f6",
+      androidSpinnerStyle: "large",
+      iosSpinnerStyle: "small",
+      splashFullScreen: true,
+      splashImmersive: true
     },
     StatusBar: {
-      style: 'dark'
+      style: 'dark',
+      backgroundColor: '#ffffff'
+    },
+    LocalNotifications: {
+      smallIcon: "ic_stat_icon_config_sample",
+      iconColor: "#3B82F6",
+      sound: "default",
+      vibrate: true
     }
   }
 };

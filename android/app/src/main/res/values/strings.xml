@@ -4,4 +4,40 @@
     <string name="title_activity_main">Financial Assistant</string>
     <string name="package_name">com.financialassistant.app</string>
     <string name="custom_url_scheme">com.financialassistant.app</string>
+    
+    <!-- App shortcuts -->
+    <string name="shortcut_add_expense">Add Expense</string>
+    <string name="shortcut_add_expense_long">Quickly add a new expense</string>
+    <string name="shortcut_dashboard">Dashboard</string>
+    <string name="shortcut_dashboard_long">View your financial overview</string>
+    <string name="shortcut_tax_calculator">Tax Calculator</string>
+    <string name="shortcut_tax_calculator_long">Calculate your taxes</string>
+    <string name="shortcut_budget">Budget</string>
+    <string name="shortcut_budget_long">View and manage budgets</string>
+    
+    <!-- Notification messages -->
+    <string name="notification_budget_alert">Budget Alert</string>
+    <string name="notification_expense_reminder">Log Your Expenses</string>
+    <string name="notification_tax_reminder">Tax Reminder</string>
+    <string name="notification_weekly_review">Weekly Budget Review</string>
+    
+    <!-- Permission messages -->
+    <string name="permission_camera_rationale">Camera access is needed to scan receipts</string>
+    <string name="permission_notification_rationale">Notifications help you stay on track with your budget</string>
+    <string name="permission_storage_rationale">Storage access is needed to save receipt images</string>
+    
+    <!-- Error messages -->
+    <string name="error_network_unavailable">Network connection is required for this feature</string>
+    <string name="error_camera_unavailable">Camera is not available on this device</string>
+    <string name="error_storage_unavailable">Storage is not available on this device</string>
+    
+    <!-- Success messages -->
+    <string name="success_expense_added">Expense added successfully</string>
+    <string name="success_budget_updated">Budget updated successfully</string>
+    <string name="success_receipt_scanned">Receipt scanned successfully</string>
+    
+    <!-- Loading messages -->
+    <string name="loading_syncing">Syncing data...</string>
+    <string name="loading_processing">Processing...</string>
+    <string name="loading_scanning">Scanning receipt...</string>
 </resources>

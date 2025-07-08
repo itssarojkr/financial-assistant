@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Bell, Plus, Save, X } from 'lucide-react';
-import { AlertService, ExpenseService, type CreateAlertData, type ExpenseCategory } from '@/services';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { ERROR } from '@/shared/constants/app.constants';
+import { AlertService } from '@/application/services/AlertService';
+import { ExpenseService } from '@/application/services/ExpenseService';
+import { OptimizedExpenseService } from '@/infrastructure/services/OptimizedExpenseService';
 
 interface AlertFormProps {
   alert?: {
@@ -16,7 +21,7 @@ interface AlertFormProps {
     period: string;
     active: boolean;
   };
-  onSave: (alert: CreateAlertData) => Promise<void>;
+  onSave: (alert: { category_id: number | null; threshold: number; period: string; active: boolean }) => Promise<void>;
   onCancel: () => void;
   userId: string;
 }
@@ -27,22 +32,36 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   onCancel,
   userId,
 }) => {
-  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string; icon: string | null; color: string | null }>>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateAlertData>({
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<{
+    category_id: number | null;
+    threshold: number;
+    period: string;
+    active: boolean;
+  }>({
     category_id: alert?.category_id || null,
     threshold: alert?.threshold || 0,
     period: alert?.period || 'monthly',
     active: alert?.active ?? true,
   });
+  const thresholdRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    if (thresholdRef.current) {
+      thresholdRef.current.focus();
+    }
+  }, []);
+
   const loadCategories = async () => {
     try {
-      const categoriesData = await ExpenseService.getCategories();
+      const categoriesData = await OptimizedExpenseService.getInstance().getCategories();
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -52,18 +71,23 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError(null);
     try {
       await onSave(formData);
-    } catch (error) {
-      console.error('Error saving alert:', error);
+      toast({
+        title: 'Alert saved',
+        description: 'Your alert has been saved successfully.',
+      });
+    } catch (err: unknown) {
+      const message = (typeof err === 'object' && err && 'message' in err) ? (err as { message?: string }).message : undefined;
+      setError(message || ERROR.MESSAGES.GENERIC);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof CreateAlertData, value: string | number | boolean | null) => {
-    setFormData(prev => ({
+  const handleInputChange = (field: 'category_id' | 'threshold' | 'period' | 'active', value: string | number | boolean | null) => {
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -81,13 +105,19 @@ export const AlertForm: React.FC<AlertFormProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" role="form" aria-labelledby="alert-form-title" tabIndex={0}>
+          {error && (
+            <Alert variant="destructive" id="alert-error" aria-live="assertive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           {/* Category */}
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category" id="alert-category-label">Category</Label>
             <Select
               value={formData.category_id !== null ? formData.category_id.toString() : 'none'}
               onValueChange={(value) => handleInputChange('category_id', value === 'none' ? null : parseInt(value))}
+              aria-labelledby="alert-category-label"
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
@@ -105,9 +135,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
           {/* Threshold */}
           <div className="space-y-2">
-            <Label htmlFor="threshold">Spending Threshold</Label>
+            <Label htmlFor="threshold" id="alert-threshold-label">Spending Threshold</Label>
             <Input
               id="threshold"
+              ref={thresholdRef}
               type="number"
               step="0.01"
               min="0"
@@ -115,6 +146,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               onChange={(e) => handleInputChange('threshold', parseFloat(e.target.value) || 0)}
               placeholder="0.00"
               required
+              aria-describedby={error ? 'alert-error' : undefined}
+              aria-invalid={!!error}
+              aria-labelledby="alert-threshold-label"
+              style={{ minHeight: '44px' }}
             />
             <p className="text-sm text-gray-500">
               You'll be notified when spending exceeds this amount
@@ -123,10 +158,11 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
           {/* Period */}
           <div className="space-y-2">
-            <Label htmlFor="period">Alert Period</Label>
+            <Label htmlFor="period" id="alert-period-label">Alert Period</Label>
             <Select
               value={formData.period}
               onValueChange={(value) => handleInputChange('period', value)}
+              aria-labelledby="alert-period-label"
             >
               <SelectTrigger>
                 <SelectValue />
@@ -142,9 +178,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           </div>
 
           {/* Active Status */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="space-y-0.5">
-              <Label htmlFor="active">Active</Label>
+              <Label htmlFor="active" id="alert-active-label">Active</Label>
               <p className="text-sm text-gray-500">
                 Enable or disable this alert
               </p>
@@ -153,15 +189,17 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               id="active"
               checked={formData.active}
               onCheckedChange={(checked) => handleInputChange('active', checked)}
+              aria-labelledby="alert-active-label"
+              style={{ minHeight: '44px', minWidth: '44px' }}
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button type="submit" disabled={isLoading} className="flex-1 min-h-[44px]">
               {isLoading ? 'Saving...' : (alert ? 'Update' : 'Create')}
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className="min-h-[44px]">
               <X className="w-4 h-4" />
             </Button>
           </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useMobile } from '@/hooks/use-mobile';
+import { useMobile } from '@/presentation/hooks/ui/useMobile';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Menu, MoreVertical } from 'lucide-react';
@@ -27,20 +27,17 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   onMoreClick,
   className = ''
 }) => {
-  const { isMobile, hapticFeedback } = useMobile();
+  const { isMobile } = useMobile();
 
   const handleBack = () => {
-    hapticFeedback('light');
     onBack?.();
   };
 
   const handleMenuClick = () => {
-    hapticFeedback('light');
     onMenuClick?.();
   };
 
   const handleMoreClick = () => {
-    hapticFeedback('light');
     onMoreClick?.();
   };
 
@@ -52,7 +49,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
     <div className={`min-h-screen bg-gray-50 ${className}`}>
       {/* Mobile Header */}
       {(title || showBackButton || showMenu || showMore) && (
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3" role="banner" aria-label="Mobile header">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {showBackButton && (
@@ -60,7 +57,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={handleBack}
-                  className="p-2"
+                  className="p-2 min-w-[44px] min-h-[44px]"
+                  aria-label="Go back"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -70,13 +68,14 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={handleMenuClick}
-                  className="p-2"
+                  className="p-2 min-w-[44px] min-h-[44px]"
+                  aria-label="Open menu"
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
               {title && (
-                <h1 className="text-lg font-semibold text-gray-900 truncate">
+                <h1 className="text-lg font-semibold text-gray-900 truncate" id="mobile-header-title">
                   {title}
                 </h1>
               )}
@@ -86,7 +85,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={handleMoreClick}
-                className="p-2"
+                className="p-2 min-w-[44px] min-h-[44px]"
+                aria-label="More options"
               >
                 <MoreVertical className="h-5 w-5" />
               </Button>
@@ -96,7 +96,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
       )}
 
       {/* Mobile Content */}
-      <div className="p-4 pb-20">
+      <div className="p-4 pb-20 overflow-y-auto" role="main" aria-labelledby="mobile-header-title">
         {children}
       </div>
 
@@ -111,19 +111,19 @@ export const MobileCard: React.FC<{
   className?: string;
   onClick?: () => void;
 }> = ({ children, className = '', onClick }) => {
-  const { hapticFeedback } = useMobile();
-
   const handleClick = () => {
     if (onClick) {
-      hapticFeedback('light');
       onClick();
     }
   };
 
   return (
     <Card
-      className={`${onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''} ${className}`}
+      className={`${onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''} min-w-[44px] min-h-[44px] ${className}`}
       onClick={handleClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      aria-label={onClick ? 'Open card' : undefined}
     >
       {children}
     </Card>

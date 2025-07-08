@@ -14,6 +14,10 @@ import { TaxStrategyFactory, TaxCalculationParams } from '@/lib/tax-strategy';
 // Import strategies to ensure they are registered
 import '@/lib/strategies';
 
+interface AdditionalParams {
+  [key: string]: string | number | boolean;
+}
+
 interface StrategyBasedTaxCalculatorProps {
   salaryData: SalaryData;
   taxData: TaxData;
@@ -22,8 +26,8 @@ interface StrategyBasedTaxCalculatorProps {
   // Country-specific props
   regime?: string;
   setRegime?: (regime: string) => void;
-  additionalParams?: Record<string, any>;
-  setAdditionalParams?: (params: Record<string, any>) => void;
+  additionalParams?: AdditionalParams;
+  setAdditionalParams?: (params: AdditionalParams) => void;
 }
 
 const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
@@ -40,10 +44,10 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
   
   // Get the appropriate strategy for the country
   const strategy = useMemo(() => {
-    const foundStrategy = TaxStrategyFactory.createStrategyByName(salaryData.country);
+    const foundStrategy = TaxStrategyFactory.createStrategy(salaryData.countryCode);
     console.log('Strategy found:', foundStrategy?.name);
     return foundStrategy;
-  }, [salaryData.country]);
+  }, [salaryData.countryCode]);
 
   // Use the reusable tax calculator hook
   const {
@@ -157,7 +161,7 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
   }, [setRegime]);
 
   // Handle additional params changes
-  const handleAdditionalParamsChange = useCallback((newParams: Record<string, any>) => {
+  const handleAdditionalParamsChange = useCallback((newParams: Record<string, unknown>) => {
     if (setAdditionalParams) {
       setAdditionalParams(newParams);
     }
@@ -227,7 +231,7 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
               </Tooltip>
             </div>
             <span className="font-medium">
-              {strategy.currency}{taxData.federalTax?.toLocaleString() || 0}
+              {strategy.currency}{(taxData.federalTax || 0).toLocaleString()}
             </span>
           </div>
 
@@ -253,7 +257,7 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
                 </Tooltip>
               </div>
               <span className="font-medium">
-                -{strategy.currency}{taxData.breakdown.rebate.toLocaleString()}
+                -{strategy.currency}{(taxData.breakdown.rebate || 0).toLocaleString()}
               </span>
             </div>
           )}
@@ -275,7 +279,7 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
                 )}
               </div>
               <span className="font-medium">
-                {strategy.currency}{taxData.additionalTaxes?.[tax.key]?.toLocaleString() || 0}
+                {strategy.currency}{(taxData.additionalTaxes?.[tax.key] || 0).toLocaleString()}
               </span>
             </div>
           ))}
@@ -295,7 +299,7 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
                 </Tooltip>
               </div>
               <span className="font-medium">
-                -{strategy.currency}{taxData.breakdown.totalDeductions.toLocaleString()}
+                -{strategy.currency}{(taxData.breakdown.totalDeductions || 0).toLocaleString()}
               </span>
             </div>
           )}
@@ -303,13 +307,13 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
           {/* Total Tax */}
           <div className="border-t pt-3 flex justify-between items-center font-semibold">
             <span>Total Tax</span>
-            <span>{strategy.currency}{taxData.totalTax?.toLocaleString() || 0}</span>
+            <span>{strategy.currency}{(taxData.totalTax || 0).toLocaleString()}</span>
           </div>
 
           {/* Take Home Salary */}
           <div className="border-t pt-3 flex justify-between items-center text-green-600 font-semibold">
             <span>Take Home Salary</span>
-            <span>{strategy.currency}{taxData.takeHomeSalary?.toLocaleString() || 0}</span>
+            <span>{strategy.currency}{(taxData.takeHomeSalary || 0).toLocaleString()}</span>
           </div>
         </div>
       </div>

@@ -8,12 +8,15 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
 
 interface TaxCalculatorAustraliaProps {
   salaryData: SalaryData;
   taxData: TaxData;
   setTaxData: (data: TaxData) => void;
   onNext: () => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const AU_BRACKETS = [
@@ -27,7 +30,7 @@ const TAX_FREE_THRESHOLD = 18200;
 const MEDICARE_LEVY_RATE = 0.02;
 const MAX_SUPER_CONTRIB = 27500;
 
-const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryData, taxData, setTaxData, onNext }) => {
+const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryData, taxData, setTaxData, onNext, userCurrency, countryCurrency }) => {
   const {
     viewMode,
     showAdvanced,
@@ -136,7 +139,8 @@ const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryD
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = '$';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
 
   return (
     <div>
@@ -148,7 +152,7 @@ const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryD
         currentTaxData={taxData}
         whatIfTaxData={whatIfTaxData}
         currentSalary={salaryData.grossSalary}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '$'}
         showCalculationModal={showCalculationModal}
         onToggleCalculationModal={() => setShowCalculationModal(!showCalculationModal)}
         countryName="Australia"
@@ -163,49 +167,55 @@ const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryD
         description="Deductions reduce your taxable income before tax calculation."
       />
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || '$'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
       <div className="space-y-3 mt-6">
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {countryCurrency || '$'}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{countryCurrency || '$'}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
         {/* Display deductions if any */}
         <div className="space-y-1">
           {/* Tax-Free Threshold - Always shown */}
           <div className="flex justify-between text-sm text-blue-700">
             <span>Tax-Free Threshold</span>
-            <span className="font-medium">-{currencySymbol}{TAX_FREE_THRESHOLD.toLocaleString()}</span>
+            <span className="font-medium">-{countryCurrency || '$'}{TAX_FREE_THRESHOLD.toLocaleString()}</span>
           </div>
           
           {/* Additional Deductions */}
           {totalDeductions > 0 && (
             <div className="flex justify-between text-sm text-blue-700">
               <span>Additional Deductions</span>
-              <span className="font-medium">-{currencySymbol}{totalDeductions.toLocaleString()}</span>
+              <span className="font-medium">-{countryCurrency || '$'}{totalDeductions.toLocaleString()}</span>
             </div>
           )}
           
           {/* Total Deductions */}
           <div className="flex justify-between text-sm text-blue-700 font-medium border-t pt-1">
             <span>Total Deductions</span>
-            <span>-{currencySymbol}{(TAX_FREE_THRESHOLD + totalDeductions).toLocaleString()}</span>
+            <span>-{countryCurrency || '$'}{(TAX_FREE_THRESHOLD + totalDeductions).toLocaleString()}</span>
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Income Tax</span>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.federalTax).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '$'}{getValue(taxData.federalTax).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Medicare Levy</span>
@@ -220,7 +230,7 @@ const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryD
                 <p>Medicare levy is 2% of taxable income</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.medicare).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '$'}{getValue(taxData.medicare).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -228,9 +238,11 @@ const TaxCalculatorAustralia: React.FC<TaxCalculatorAustraliaProps> = ({ salaryD
         brackets={taxData.brackets || []}
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '$'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
       <div className="mt-6 flex justify-end">
         <button

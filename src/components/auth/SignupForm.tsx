@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,14 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!success && emailRef.current) {
+      emailRef.current.focus();
+    }
+  }, [success]);
 
   const validatePassword = (password: string) => {
     const minLength = 8;
@@ -119,15 +127,15 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Create account</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center" id="signup-form-title">Create account</CardTitle>
         <CardDescription className="text-center">
           Enter your details to create your account
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" role="form" aria-labelledby="signup-form-title">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" id="signup-error" aria-live="assertive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -161,12 +169,15 @@ export const SignupForm: React.FC<SignupFormProps> = ({
             <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
+              ref={emailRef}
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
+              aria-describedby={error ? 'signup-error' : undefined}
+              aria-invalid={!!error}
             />
           </div>
 

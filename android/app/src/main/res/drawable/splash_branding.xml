@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="60dp"
+    android:viewportWidth="200"
+    android:viewportHeight="60">
+    
+    <!-- Financial Assistant text -->
+    <path
+        android:fillColor="@color/colorPrimary"
+        android:pathData="M10,20h8v20h-8V20zM20,20h8v20h-8V20zM30,20h8v20h-8V20zM40,20h8v20h-8V20zM50,20h8v20h-8V20z" />
+    
+    <!-- Assistant text -->
+    <path
+        android:fillColor="@color/colorAccent"
+        android:pathData="M70,20h8v20h-8V20zM80,20h8v20h-8V20zM90,20h8v20h-8V20zM100,20h8v20h-8V20zM110,20h8v20h-8V20zM120,20h8v20h-8V20zM130,20h8v20h-8V20z" />
+    
+    <!-- Tagline -->
+    <path
+        android:fillColor="@color/colorOnSurface"
+        android:pathData="M10,45h180v2H10V45z" />
+</vector> 

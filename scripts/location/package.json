@@ -1,0 +1,18 @@
+{
+  "name": "location-scripts",
+  "version": "1.0.0",
+  "description": "Location data population scripts for financial assistant",
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.mjs",
+    "populate": "node populate.mjs",
+    "localities": "node localities.mjs",
+    "start": "node start.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "node-fetch": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "adm-zip": "^0.5.0"
+  }
+} 

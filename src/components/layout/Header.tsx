@@ -57,7 +57,6 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
             <Calculator className="w-6 h-6 text-blue-600" />
             <span className="text-xl font-bold text-gray-900">Financial Assistant</span>
           </div>
-          
           {user && (
             <nav className="hidden md:flex items-center space-x-4">
               <Button
@@ -110,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || ''} />
+                    <AvatarImage src={user.user_metadata?.avatar_url ?? undefined} alt={user.email || 'User avatar'} loading="lazy" />
                     <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -161,13 +160,13 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/login')}
               >
                 Sign in
               </Button>
               <Button
                 size="sm"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/signup')}
               >
                 Sign up
               </Button>

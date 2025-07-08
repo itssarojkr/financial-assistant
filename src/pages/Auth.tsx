@@ -1,30 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { SignupForm } from '@/components/auth/SignupForm';
 import { PasswordResetForm } from '@/components/auth/PasswordResetForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 type AuthMode = 'login' | 'signup' | 'reset';
 
-export const Auth: React.FC = () => {
+interface AuthProps {
+  mode?: AuthMode;
+}
+
+export const Auth: React.FC<AuthProps> = ({ mode: propMode }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<AuthMode>('login');
+  const location = useLocation();
+  const [mode, setMode] = useState<AuthMode>(propMode || 'login');
+
+  // Sync mode with prop (from route)
+  useEffect(() => {
+    if (propMode && ['login', 'signup'].includes(propMode)) {
+      setMode(propMode);
+    }
+  }, [propMode]);
 
   // Redirect if user is already logged in
   React.useEffect(() => {
     if (user) {
-      navigate('/');
+      // If redirected from a protected route, go back to intended destination
+      const from = (location.state as any)?.from?.pathname || '/';
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location]);
 
   const handleSuccess = () => {
-    // For login, redirect will happen automatically via useEffect
-    // For signup, user needs to verify email first
     if (mode === 'signup') {
       // Stay on the page to show email verification message
     }
+  };
+
+  const handleSwitchToLogin = () => {
+    setMode('login');
+    navigate('/login');
+  };
+  const handleSwitchToSignup = () => {
+    setMode('signup');
+    navigate('/signup');
+  };
+  const handleSwitchToReset = () => {
+    setMode('reset');
+    // Optionally, you could use a dedicated /reset route if desired
   };
 
   const renderForm = () => {
@@ -33,21 +58,21 @@ export const Auth: React.FC = () => {
         return (
           <LoginForm
             onSuccess={handleSuccess}
-            onSwitchToSignup={() => setMode('signup')}
-            onSwitchToReset={() => setMode('reset')}
+            onSwitchToSignup={handleSwitchToSignup}
+            onSwitchToReset={handleSwitchToReset}
           />
         );
       case 'signup':
         return (
           <SignupForm
             onSuccess={handleSuccess}
-            onSwitchToLogin={() => setMode('login')}
+            onSwitchToLogin={handleSwitchToLogin}
           />
         );
       case 'reset':
         return (
           <PasswordResetForm
-            onSwitchToLogin={() => setMode('login')}
+            onSwitchToLogin={handleSwitchToLogin}
           />
         );
       default:

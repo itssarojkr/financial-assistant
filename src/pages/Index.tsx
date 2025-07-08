@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserDataService, TaxCalculationData } from '@/services/userDataService';
-import { CalculationStorageService } from '@/services/calculationStorageService';
+import { UserDataService, TaxCalculationData } from '@/application/services/UserDataService';
+import { CalculationStorageService } from '@/application/services/CalculationStorageService';
 import { Header } from '@/components/layout/Header';
-import CountrySelector from '@/components/CountrySelector';
-import SalaryInput from '@/components/SalaryInput';
+import { CountrySelector } from '@/components/CountrySelector';
+import { SalaryInput } from '@/components/SalaryInput';
 import TaxCalculator from '@/components/TaxCalculator';
 import LivingExpenses from '@/components/LivingExpenses';
 import SavingsAnalysis from '@/components/SavingsAnalysis';
@@ -20,12 +20,15 @@ import { SignInModal } from '@/components/auth/SignInModal';
 import { SaveCalculationModal } from '@/components/modals/SaveCalculationModal';
 import { LoadCalculationModal } from '@/components/modals/LoadCalculationModal';
 import { Calculator, Globe, TrendingUp, Save, BarChart3, FolderOpen, Star } from 'lucide-react';
-import { useMobile } from '@/hooks/use-mobile';
+import { useMobile } from '@/presentation/hooks/ui/useMobile';
 import MobileIndex from './MobileIndex';
 import { useLocation } from 'react-router-dom';
+import { convertCurrency } from '@/lib/utils';
+import { TaxStrategyFactory } from '@/lib/tax-strategy';
 
 export interface SalaryData {
   country: string;
+  countryCode: string;
   state: string;
   stateId: string;
   city: string;
@@ -107,29 +110,90 @@ type SouthAfricaTaxData = TaxData & {
   taxable: number;
 };
 
+interface AustraliaTaxData extends TaxData {
+  incomeTax: number;
+  medicareSurcharge: number;
+  super: number;
+  taxable: number;
+}
+
+interface GermanyTaxData extends TaxData {
+  incomeTax: number;
+  soli: number;
+  churchTax: number;
+  taxable: number;
+}
+
+interface SavedCalculation {
+  id: string;
+  data_name: string;
+  data_content: TaxCalculationData;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TaxCalculationData {
+  country: string;
+  salary: number;
+  currency: string;
+  taxAmount: number;
+  netSalary: number;
+  effectiveTaxRate: number;
+  expenseData?: ExpenseData;
+}
+
+// Helper to get default currency for a country code
+function getDefaultCurrencyForCountry(countryCode: string): string {
+  switch (countryCode) {
+    case 'IN': return 'INR';
+    case 'US': return 'USD';
+    case 'CA': return 'CAD';
+    case 'GB': return 'GBP';
+    case 'AU': return 'AUD';
+    case 'BR': return 'BRL';
+    case 'ZA': return 'ZAR';
+    case 'FR': return 'EUR';
+    case 'DE': return 'EUR';
+    case 'CN': return 'CNY';
+    case 'JP': return 'JPY';
+    default: return 'USD';
+  }
+}
+
+// Helper to format currency
+function formatCurrency(amount: number, code: string) {
+  return amount.toLocaleString(undefined, {
+    style: 'currency',
+    currency: code,
+    maximumFractionDigits: 0,
+  });
+}
+
 const Index = () => {
   // All hooks at the top!
-  const { isMobile, isLoading } = useMobile();
+  const { isMobile } = useMobile();
   const { user } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSaveCalculationModal, setShowSaveCalculationModal] = useState(false);
   const [showLoadCalculationModal, setShowLoadCalculationModal] = useState(false);
-  const [existingCalculation, setExistingCalculation] = useState<any>(null);
-  const [savedCalculations, setSavedCalculations] = useState<any[]>([]);
+  const [existingCalculation, setExistingCalculation] = useState<SavedCalculation | null>(null);
+  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>([]);
   const [isLoadingSavedCalculations, setIsLoadingSavedCalculations] = useState(false);
   const [salaryData, setSalaryData] = useState<SalaryData>({
     country: '',
+    countryCode: '',
     state: '',
     stateId: '',
     city: '',
     cityId: '',
     locality: '',
     localityId: '',
-    isNative: true,
+    isNative: false,
     grossSalary: 0,
-    currency: 'USD',
+    currency: 'USD'
   });
   const [taxDataIndia, setTaxDataIndia] = useState<TaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0
@@ -145,11 +209,11 @@ const Index = () => {
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, ni: 0, studentLoan: 0, taxable: 0, brackets: []
   });
-  const [taxDataAustralia, setTaxDataAustralia] = useState<any>({
+  const [taxDataAustralia, setTaxDataAustralia] = useState<AustraliaTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, medicareSurcharge: 0, super: 0, taxable: 0, brackets: []
   });
-  const [taxDataGermany, setTaxDataGermany] = useState<any>({
+  const [taxDataGermany, setTaxDataGermany] = useState<GermanyTaxData>({
     federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
     incomeTax: 0, soli: 0, churchTax: 0, taxable: 0, brackets: []
   });
@@ -209,7 +273,8 @@ const Index = () => {
       setSalaryData(prev => ({
         ...prev,
         grossSalary: budget.amount,
-        currency: 'USD' // Default currency, could be enhanced to detect from budget
+        currency: 'USD', // Default currency, could be enhanced to detect from budget
+        countryCode: prev.countryCode || ''
       }));
       
       // Show a toast notification
@@ -340,6 +405,86 @@ const Index = () => {
     }
   }, [user, salaryData, taxDataIndia, taxDataUS, taxDataCanada, taxDataUK, taxDataAustralia, taxDataGermany, taxDataFrance, taxDataBrazil, taxDataSouthAfrica, expenseData, indiaRegime, usFilingStatus, usState]);
 
+  // Estimate expenses when salary data changes
+  useEffect(() => {
+    if (salaryData.grossSalary > 0 && salaryData.country && salaryData.city) {
+      // Import the estimateExpenses function from LivingExpenses
+      const estimateExpenses = (country: string, city: string, grossSalary: number) => {
+        // Basic expense estimation logic
+        let rentMultiplier = 0.30;
+        let utilitiesBase = 200;
+        let foodBase = 400;
+        let transportBase = 150;
+        let healthcareBase = 300;
+        const otherBase = 300;
+
+        // Adjust based on country and city
+        switch (country) {
+          case 'United States':
+            if (city.toLowerCase().includes('san francisco') || city.toLowerCase().includes('new york')) {
+              rentMultiplier = 0.45;
+              utilitiesBase = 300;
+              foodBase = 600;
+              transportBase = 200;
+            }
+            break;
+          case 'India':
+            rentMultiplier = 0.25;
+            utilitiesBase = 100;
+            foodBase = 200;
+            transportBase = 80;
+            healthcareBase = 150;
+            break;
+          case 'United Kingdom':
+          case 'UK':
+            rentMultiplier = 0.35;
+            utilitiesBase = 200;
+            foodBase = 350;
+            transportBase = 180;
+            healthcareBase = 50;
+            break;
+          case 'Canada':
+            rentMultiplier = 0.30;
+            utilitiesBase = 180;
+            foodBase = 400;
+            transportBase = 150;
+            healthcareBase = 100;
+            break;
+          case 'Australia':
+            rentMultiplier = 0.35;
+            utilitiesBase = 250;
+            foodBase = 450;
+            transportBase = 200;
+            healthcareBase = 150;
+            break;
+          default:
+            break;
+        }
+
+        const rent = grossSalary * rentMultiplier / 12;
+        const utilities = utilitiesBase;
+        const food = foodBase;
+        const transport = transportBase;
+        const healthcare = healthcareBase;
+        const other = otherBase;
+        const total = rent + utilities + food + transport + healthcare + other;
+
+        return {
+          rent,
+          utilities,
+          food,
+          transport,
+          healthcare,
+          other,
+          total
+        };
+      };
+
+      const estimatedExpenses = estimateExpenses(salaryData.country, salaryData.city, salaryData.grossSalary);
+      setExpenseData(estimatedExpenses);
+    }
+  }, [salaryData.grossSalary, salaryData.country, salaryData.city]);
+
   // Select correct taxData and setTaxData for the selected country
   let taxData: any = {};
   let setTaxData: any = () => {};
@@ -386,19 +531,214 @@ const Index = () => {
       setTaxData = () => {};
   }
 
-  // Show loading while detecting platform
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Add this useEffect after all state declarations and before rendering logic
+  useEffect(() => {
+    if (!salaryData.countryCode || !salaryData.grossSalary || salaryData.grossSalary <= 0) return;
+    const strategy = TaxStrategyFactory.createStrategy(salaryData.countryCode);
+    if (!strategy) return;
 
-  // Render mobile version if on mobile
+    // Collect regime and additional params if needed
+    let regime = undefined;
+    let additionalParams = {};
+    switch (salaryData.country) {
+      case 'India':
+        regime = indiaRegime;
+        break;
+      case 'United States':
+        additionalParams = { filingStatus: usFilingStatus, state: usState };
+        break;
+      default:
+        break;
+    }
+
+    const regimeValue = typeof regime === 'string' ? regime : 'new';
+    const params = {
+      grossSalary: salaryData.grossSalary,
+      deductions: {}, // TODO: connect to deductions if available
+      regime: regimeValue,
+      additionalParams
+    };
+    const result = strategy.calculateTax(params);
+
+    // Update the correct taxData state
+    switch (salaryData.country) {
+      case 'India':
+        setTaxDataIndia({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+        });
+        break;
+      case 'United States':
+        setTaxDataUS({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+        });
+        break;
+      case 'Canada':
+        setTaxDataCanada({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          provTax: 0,
+          cpp: 0,
+          ei: 0,
+          federalTaxable: 0,
+          provTaxable: 0,
+        });
+        break;
+      case 'United Kingdom':
+      case 'UK':
+        setTaxDataUK({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          incomeTax: 0,
+          ni: 0,
+          studentLoan: 0,
+          taxable: 0,
+        });
+        break;
+      case 'Australia':
+        setTaxDataAustralia({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          incomeTax: 0,
+          medicareSurcharge: 0,
+          super: 0,
+          taxable: 0,
+        });
+        break;
+      case 'Germany':
+        setTaxDataGermany({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          incomeTax: 0,
+          soli: 0,
+          churchTax: 0,
+          taxable: 0,
+        });
+        break;
+      case 'France':
+        setTaxDataFrance({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          incomeTax: 0,
+          csgcrds: 0,
+          taxable: 0,
+        });
+        break;
+      case 'Brazil':
+        setTaxDataBrazil({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          inss: 0,
+          irpf: 0,
+          taxable: 0,
+        });
+        break;
+      case 'South Africa':
+        setTaxDataSouthAfrica({
+          federalTax: result.breakdown?.incomeTax ?? 0,
+          stateTax: result.breakdown?.stateTax ?? 0,
+          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
+          medicare: result.additionalTaxes?.medicare ?? 0,
+          totalTax: result.totalTax ?? 0,
+          takeHomeSalary: result.takeHomeSalary ?? 0,
+          taxableIncome: result.taxableIncome ?? 0,
+          brackets: result.brackets ?? [],
+          effectiveTaxRate: result.effectiveTaxRate ?? 0,
+          marginalTaxRate: result.marginalTaxRate ?? 0,
+          additionalTaxes: result.additionalTaxes ?? {},
+          breakdown: result.breakdown ?? {},
+          incomeTax: 0,
+          rebate: 0,
+          uif: 0,
+          taxable: 0,
+        });
+        break;
+      default:
+        break;
+    }
+  }, [salaryData, indiaRegime, usFilingStatus, usState]);
+
+  // Show loading while detecting platform
   if (isMobile) {
     return <MobileIndex />;
   }
@@ -676,6 +1016,10 @@ const Index = () => {
     setActiveTab('analysis');
   };
 
+  // When calculating taxes, always use the country's default currency
+  const countryCurrency = getDefaultCurrencyForCountry(salaryData.country);
+  const salaryInCountryCurrency = convertCurrency(salaryData.grossSalary, salaryData.currency, countryCurrency);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       <Header 
@@ -685,32 +1029,6 @@ const Index = () => {
       
       <div className="p-4">
         <div className="max-w-6xl mx-auto">
-          {/* Progress Indicators */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${activeTab === 'basics' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                <Globe className="w-4 h-4" />
-                <span className="text-sm font-medium">Location & Salary</span>
-              </div>
-              <div className="w-8 h-0.5 bg-gray-300"></div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                activeTab === 'taxes' ? 'bg-blue-100 text-blue-700' : 
-                (salaryData.grossSalary > 0 && salaryData.country) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-              }`}>
-                <Calculator className="w-4 h-4" />
-                <span className="text-sm font-medium">Tax Calculation</span>
-              </div>
-              <div className="w-8 h-0.5 bg-gray-300"></div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                activeTab === 'analysis' ? 'bg-blue-100 text-blue-700' : 
-                (salaryData.grossSalary > 0 && salaryData.country) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-              }`}>
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-medium">Analysis</span>
-              </div>
-            </div>
-          </div>
-
           {/* Main Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">
@@ -733,18 +1051,45 @@ const Index = () => {
 
             <TabsContent value="basics" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <CountrySelector 
-                  salaryData={salaryData} 
-                  setSalaryData={setSalaryData}
-                  onNext={() => setActiveTab('taxes')}
-                  salaryValid={isSalaryValid}
-                />
-                <SalaryInput 
-                  salaryData={salaryData} 
-                  setSalaryData={setSalaryData}
-                  onLoadCalculation={() => setShowLoadCalculationModal(true)}
-                  showLoadButton={!!user}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="w-5 h-5" />
+                      Location Details
+                    </CardTitle>
+                    <CardDescription>
+                      Select your country, state, city, and locality for accurate tax calculations
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <CountrySelector 
+                      salaryData={salaryData} 
+                      setSalaryData={setSalaryData}
+                      onNext={() => setActiveTab('taxes')}
+                      salaryValid={isSalaryValid}
+                      onLoadCalculation={() => setShowLoadCalculationModal(true)}
+                      showLoadButton={!!user}
+                    />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calculator className="w-5 h-5" />
+                      Salary Information
+                    </CardTitle>
+                    <CardDescription>
+                      Enter your annual salary to calculate take-home pay and taxes
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SalaryInput 
+                      salaryData={salaryData} 
+                      setSalaryData={setSalaryData}
+                    />
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 

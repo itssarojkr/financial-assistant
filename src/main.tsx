@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -8,6 +7,10 @@ import { ErrorBoundary } from '@/hooks/use-error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 import App from './App.tsx'
 import './index.css'
+
+// Import tax strategies to register them
+import '@/lib/strategies';
+import { AccessibilityService } from '@/infrastructure/services/AccessibilityService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +27,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Initialize accessibility features
+AccessibilityService.getInstance();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
@@ -31,7 +37,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <AuthProvider>
             <App />
-            <Toaster />
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

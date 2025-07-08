@@ -8,12 +8,15 @@ import AdvancedOptions from './AdvancedOptions';
 import WhatIfCalculator from './WhatIfCalculator';
 import { useTaxCalculator, useWhatIfTaxData, useTaxMetrics } from '@/hooks/use-tax-calculator';
 import { DeductionField } from './AdvancedOptions';
+import { convertCurrency } from '@/lib/utils';
 
 interface TaxCalculatorGermanyProps {
   salaryData: SalaryData;
   taxData: TaxData;
   setTaxData: (data: TaxData) => void;
   onNext: () => void;
+  userCurrency?: string;
+  countryCurrency?: string;
 }
 
 const GERMANY_BRACKETS = [
@@ -26,7 +29,7 @@ const GERMANY_BRACKETS = [
 const SOLI_RATE = 0.055;
 const CHURCH_TAX_RATE = 0.09;
 
-const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData, taxData, setTaxData, onNext }) => {
+const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData, taxData, setTaxData, onNext, userCurrency, countryCurrency }) => {
   const {
     viewMode,
     showAdvanced,
@@ -129,7 +132,8 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
     }
   }, [whatIfTaxCalculation, setWhatIfTaxData]);
 
-  const currencySymbol = '€';
+  const showSecondaryCurrency = userCurrency && countryCurrency && userCurrency !== countryCurrency;
+  const takeHomeUserCurrency = showSecondaryCurrency ? convertCurrency(taxData.takeHomeSalary || 0, countryCurrency!, userCurrency!) : null;
 
   return (
     <div>
@@ -141,7 +145,7 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
         currentTaxData={taxData}
         whatIfTaxData={whatIfTaxData}
         currentSalary={salaryData.grossSalary}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '€'}
         showCalculationModal={showCalculationModal}
         onToggleCalculationModal={() => setShowCalculationModal(!showCalculationModal)}
         countryName="Germany"
@@ -156,33 +160,39 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
         description="Deductions reduce your taxable income before tax calculation."
       />
       <TaxSummaryCard
-        takeHome={getValue(taxData.takeHomeSalary)}
+        takeHome={getValue(taxData.takeHomeSalary || 0)}
+        takeHomeSecondary={takeHomeUserCurrency ? getValue(takeHomeUserCurrency) : undefined}
         effectiveTaxRate={effectiveTaxRate}
-        userBracket={userBracket ? userBracket.rate * 100 : undefined}
+        userBracket={userBracket ? userBracket.rate * 100 : 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={countryCurrency || '€'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
       />
       <div className="space-y-3 mt-6">
         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
           <span className="font-medium text-green-800">Take-Home Salary</span>
           <span className="text-xl font-bold text-green-600">
-            {currencySymbol}{getValue(taxData.takeHomeSalary).toLocaleString()}
+            {countryCurrency || '€'}{(getValue(taxData.takeHomeSalary || 0)).toLocaleString()}
+            {showSecondaryCurrency && takeHomeUserCurrency !== null && (
+              <span className="ml-2 text-green-700">({userCurrency}{getValue(takeHomeUserCurrency).toLocaleString()})</span>
+            )}
           </span>
         </div>
         <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg text-green-700 text-sm">
           <span>Monthly Take-Home</span>
-          <span className="font-semibold">{currencySymbol}{(taxData.takeHomeSalary / 12).toLocaleString()}</span>
+          <span className="font-semibold">{countryCurrency || '€'}{((taxData.takeHomeSalary || 0) / 12).toLocaleString()}</span>
         </div>
         {totalDeductions > 0 && (
           <div className="flex justify-between text-sm text-blue-700">
             <span>Total Deductions</span>
-            <span className="font-medium">-{currencySymbol}{totalDeductions.toLocaleString()}</span>
+            <span className="font-medium">-{countryCurrency || '€'}{totalDeductions.toLocaleString()}</span>
           </div>
         )}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Income Tax</span>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.federalTax).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '€'}{getValue(taxData.federalTax).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Solidarity Surcharge</span>
@@ -197,7 +207,7 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
                 <p>Solidarity surcharge (Soli) is 5.5% of income tax</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.soli || 0).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '€'}{getValue(taxData.soli || 0).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span>Church Tax</span>
@@ -212,7 +222,7 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
                 <p>Church tax is 9% of income tax (if applicable)</p>
               </TooltipContent>
             </Tooltip>
-            <span className="font-medium">{currencySymbol}{getValue(taxData.churchTax || 0).toLocaleString()}</span>
+            <span className="font-medium">{countryCurrency || '€'}{getValue(taxData.churchTax || 0).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -220,9 +230,11 @@ const TaxCalculatorGermany: React.FC<TaxCalculatorGermanyProps> = ({ salaryData,
         brackets={taxData.brackets || []}
         taxableIncome={taxData.taxableIncome}
         viewMode={viewMode}
-        currencySymbol={currencySymbol}
+        currencySymbol={countryCurrency || '€'}
+        secondaryCurrency={showSecondaryCurrency ? userCurrency : undefined}
         userBracketIdx={userBracketIdx}
         getValue={getValue}
+        getValueSecondary={showSecondaryCurrency ? (val) => getValue(convertCurrency(val, countryCurrency!, userCurrency!)) : undefined}
       />
       <div className="mt-6 flex justify-end">
         <button
