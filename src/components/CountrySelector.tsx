@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { SecureApiClient } from '@/infrastructure/api/SecureApiClient';
 import { useAsyncError } from '@/hooks/use-error-boundary';
-import { ArrowRight, Loader2, User } from 'lucide-react';
+import { ArrowRight, Loader2, User, FolderOpen } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Country {
   id: number;
@@ -73,6 +75,17 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 }) => {
   const { handleAsyncError } = useAsyncError();
   const [selectedCountryId, setSelectedCountryId] = useState<string>('');
+  // Add state for validation errors
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  function validateField(field: string, value: string) {
+    let error = '';
+    if (field === 'country' && !value) error = 'Country is required.';
+    if (field === 'state' && !value) error = 'State is required.';
+    if (field === 'city' && !value) error = 'City is required.';
+    // Add more as needed
+    setErrors(prev => ({ ...prev, [field]: error }));
+  }
 
   // Fetch countries
   const { data: countriesData, isLoading: countriesLoading, error: countriesError } = useQuery({
@@ -171,6 +184,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
           localityId: '',
           isNative: false
         });
+        validateField('country', countryId);
       }
     } catch (error) {
       handleAsyncError(error as Error, 'country selection change');
@@ -191,6 +205,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
           locality: '',
           localityId: '',
         });
+        validateField('state', stateId);
       }
     } catch (error) {
       handleAsyncError(error as Error, 'state selection change');
@@ -209,6 +224,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
           locality: '',
           localityId: '',
         });
+        validateField('city', cityId);
       }
     } catch (error) {
       handleAsyncError(error as Error, 'city selection change');
@@ -260,74 +276,95 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         
         {/* Country Selection */}
         <div className="space-y-2">
-          <Label htmlFor="country-select">Country/Region *</Label>
-          <Select
-            value={selectedCountryId}
-            onValueChange={handleCountryChange}
-            disabled={disabled || countriesLoading}
-          >
-            <SelectTrigger id="country-select" className="w-full">
-              <SelectValue placeholder={countriesLoading ? "Loading countries..." : "Select a country"} />
-            </SelectTrigger>
-            <SelectContent>
-              {countriesData?.map((country) => (
-                <SelectItem key={country.id} value={country.id.toString()}>
-                  {country.name} ({country.currency})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="country-select" aria-label="Select your country of residence">Country <Tooltip><TooltipTrigger asChild><span className="ml-1 cursor-help">?</span></TooltipTrigger><TooltipContent>Select your country of residence for accurate tax calculation.</TooltipContent></Tooltip></Label>
+          {countriesLoading ? (
+            <Skeleton className="h-10 w-full max-w-md" />
+          ) : (
+            <Select
+              value={selectedCountryId}
+              onValueChange={handleCountryChange}
+              disabled={disabled || countriesLoading}
+              aria-label="Select your country of residence"
+            >
+              <SelectTrigger className="w-full max-w-md" aria-label="Select your country of residence">
+                <SelectValue placeholder={countriesLoading ? "Loading countries..." : "Select a country"} aria-label="Select your country of residence" />
+                {countriesLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              </SelectTrigger>
+              <SelectContent>
+                {countriesData?.map((country) => (
+                  <SelectItem key={country.id} value={country.id.toString()} aria-label={`Select ${country.name}`}>
+                    {country.name} ({country.currency})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {errors.country && <p className="text-red-500 text-xs mt-1" role="alert" aria-live="polite" aria-label="Country error message">{errors.country}</p>}
         </div>
 
         {/* State/Province Selection */}
         {selectedCountryId && (
           <div className="space-y-2">
-            <Label htmlFor="state-select">State/Province</Label>
-            <Select
-              value={salaryData.stateId}
-              onValueChange={handleStateChange}
-              disabled={disabled || statesLoading}
-            >
-              <SelectTrigger id="state-select" className="w-full">
-                <SelectValue placeholder={statesLoading ? "Loading states..." : "Select a state/province"} />
-              </SelectTrigger>
-              <SelectContent>
-                {statesData?.map((state) => (
-                  <SelectItem key={state.id} value={state.id.toString()}>
-                    {state.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="state-select" aria-label="Select your state or province">State <Tooltip><TooltipTrigger asChild><span className="ml-1 cursor-help">?</span></TooltipTrigger><TooltipContent>Select your state or province if applicable.</TooltipContent></Tooltip></Label>
+            {statesLoading ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <Select
+                value={salaryData.stateId}
+                onValueChange={handleStateChange}
+                disabled={disabled || statesLoading}
+                aria-label="Select your state or province"
+              >
+                <SelectTrigger className="w-full max-w-md" aria-label="Select your state or province">
+                  <SelectValue placeholder={statesLoading ? "Loading states..." : "Select a state/province"} aria-label="Select your state or province" />
+                  {statesLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                </SelectTrigger>
+                <SelectContent>
+                  {statesData?.map((state) => (
+                    <SelectItem key={state.id} value={state.id.toString()} aria-label={`Select ${state.name}`}>
+                      {state.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {errors.state && <p className="text-red-500 text-xs mt-1" role="alert" aria-live="polite" aria-label="State error message">{errors.state}</p>}
           </div>
         )}
 
         {/* City Selection */}
         {salaryData.stateId && (
           <div className="space-y-2">
-            <Label htmlFor="city-select">City</Label>
-            <Select
-              value={salaryData.cityId}
-              onValueChange={handleCityChange}
-              disabled={disabled || citiesLoading}
-            >
-              <SelectTrigger id="city-select" className="w-full">
-                <SelectValue placeholder={citiesLoading ? "Loading cities..." : "Select a city"} />
-              </SelectTrigger>
-              <SelectContent>
-                {citiesData && citiesData.length > 0 ? (
-                  citiesData.map((city) => (
-                    <SelectItem key={city.id} value={city.id.toString()}>
-                      {city.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
-                    No cities available for this state
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="city-select" aria-label="Select your city">City <Tooltip><TooltipTrigger asChild><span className="ml-1 cursor-help">?</span></TooltipTrigger><TooltipContent>Select your city for more precise results.</TooltipContent></Tooltip></Label>
+            {citiesLoading ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <Select
+                value={salaryData.cityId}
+                onValueChange={handleCityChange}
+                disabled={disabled || citiesLoading}
+                aria-label="Select your city"
+              >
+                <SelectTrigger className="w-full max-w-md" aria-label="Select your city">
+                  <SelectValue placeholder={citiesLoading ? "Loading cities..." : "Select a city"} aria-label="Select your city" />
+                  {citiesLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                </SelectTrigger>
+                <SelectContent>
+                  {citiesData && citiesData.length > 0 ? (
+                    citiesData.map((city) => (
+                      <SelectItem key={city.id} value={city.id.toString()} aria-label={`Select ${city.name}`}>
+                        {city.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-sm text-muted-foreground">
+                      No cities available for this state
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {errors.city && <p className="text-red-500 text-xs mt-1" role="alert" aria-live="polite" aria-label="City error message">{errors.city}</p>}
             {citiesData && citiesData.length === 0 && !citiesLoading && (
               <p className="text-xs text-muted-foreground">
                 Cities data not available. You can proceed with just the state selection.
@@ -337,37 +374,30 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         )}
 
         {/* Locality Selection */}
-        {salaryData.cityId && (
-          <div className="space-y-2">
-            <Label htmlFor="locality-select">District/Neighborhood</Label>
-            <Select
-              value={salaryData.localityId}
-              onValueChange={handleLocalityChange}
-              disabled={disabled || localitiesLoading}
-            >
-              <SelectTrigger id="locality-select" className="w-full">
-                <SelectValue placeholder={localitiesLoading ? "Loading localities..." : "Select a district/neighborhood"} />
-              </SelectTrigger>
-              <SelectContent>
-                {localitiesData && localitiesData.length > 0 ? (
-                  localitiesData.map((locality) => (
-                    <SelectItem key={locality.id} value={locality.id.toString()}>
-                      {locality.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
-                    No localities available for this city
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-            {localitiesData && localitiesData.length === 0 && !localitiesLoading && (
-              <p className="text-xs text-muted-foreground">
-                Locality data not available. You can proceed with just the city selection.
-              </p>
-            )}
-          </div>
+        <Label htmlFor="locality-input" aria-label="Enter or select your district/neighborhood">Locality <Tooltip><TooltipTrigger asChild><span className="ml-1 cursor-help">?</span></TooltipTrigger><TooltipContent>Type or select your district/neighborhood (optional).</TooltipContent></Tooltip></Label>
+        <input
+          id="locality-input"
+          type="text"
+          className="input w-full max-w-md"
+          list="locality-suggestions"
+          value={salaryData.locality}
+          onChange={e => {
+            setSalaryData({ ...salaryData, locality: e.target.value, localityId: '' });
+            validateField('locality', e.target.value);
+          }}
+          placeholder="Type or select a locality"
+          autoComplete="off"
+          aria-label="Enter or select your district/neighborhood"
+          aria-describedby="locality-error"
+        />
+        <datalist id="locality-suggestions">
+          {localitiesData?.map(locality => (
+            <option key={locality.id} value={locality.name} aria-label={`Select ${locality.name}`} />
+          ))}
+        </datalist>
+        {errors.locality && <p id="locality-error" className="text-red-500 text-xs mt-1" role="alert" aria-live="polite" aria-label="Locality error message">{errors.locality}</p>}
+        {!localitiesData?.length && (
+          <div className="text-xs text-muted-foreground mt-1">Locality data not available. You can proceed with just the city selection.</div>
         )}
 
         {/* Native Status */}
@@ -380,6 +410,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
               isNative: checked
             })}
             disabled={disabled}
+            aria-label="Native/Permanent Resident status"
           />
           <User className="w-5 h-5 text-muted-foreground" />
           <Label htmlFor="native-status-toggle" className="text-base font-medium select-none cursor-pointer">
@@ -398,11 +429,22 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         {onNext && salaryData.country && salaryValid && (
           <Button
             onClick={onNext}
-            className="w-full"
-            disabled={disabled}
+            className="w-full min-h-[44px] touch-manipulation"
+            disabled={disabled || !salaryData.country || !salaryData.state || !salaryData.city || countriesLoading || statesLoading || citiesLoading}
+            tabIndex={0}
+            aria-label="Continue to tax calculation"
           >
-            Continue to Tax Calculation
-            <ArrowRight className="w-4 h-4 ml-2" />
+            {countriesLoading || statesLoading || citiesLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                Continue to Tax Calculation
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            )}
           </Button>
         )}
 
@@ -411,10 +453,12 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             type="button"
             variant="outline"
             onClick={onLoadCalculation}
-            className="w-full"
+            className="w-full min-h-[44px] touch-manipulation"
             disabled={disabled}
+            tabIndex={0}
+            aria-label="Load saved calculation"
           >
-            <Loader2 className="w-4 h-4 mr-2" />
+            <FolderOpen className="mr-2 h-4 w-4" />
             Load Saved Calculation
           </Button>
         )}

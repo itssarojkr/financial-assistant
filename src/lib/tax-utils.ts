@@ -142,15 +142,15 @@ export const useTaxCalculation = (
       taxableIncome: grossAfterDeductions,
       additionalTaxes: finalAdditionalTaxes
     };
-  }, dependencies);
+  }, [params]);
 };
 
 /**
  * Memoized chart data preparation
  */
 export const useChartData = (
-  currentData: unknown,
-  whatIfData: unknown,
+  currentData: Record<string, number>,
+  whatIfData: Record<string, number>,
   dataKeys: string[]
 ) => {
   return useMemo(() => {

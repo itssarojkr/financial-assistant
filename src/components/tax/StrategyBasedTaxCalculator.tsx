@@ -77,11 +77,11 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
   const deductionFields: DeductionField[] = useMemo(() => {
     if (!strategy) return [];
     
-    return strategy.getDeductions(regime).map(deduction => ({
+    return strategy.getDeductions(regime || 'new').map(deduction => ({
       key: deduction.key,
       label: deduction.label,
-      maxValue: deduction.maxValue,
-      tooltip: deduction.tooltip
+      maxValue: deduction.maxValue || 0,
+      tooltip: deduction.tooltip || ''
     }));
   }, [strategy, regime]);
 
@@ -92,8 +92,8 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
     const params: TaxCalculationParams = {
       grossSalary: salaryData.grossSalary,
       deductions,
-      regime,
-      additionalParams
+      regime: regime || 'new',
+      additionalParams: additionalParams as AdditionalParams
     };
 
     return strategy.calculateTax(params);
@@ -106,8 +106,8 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
     const params: TaxCalculationParams = {
       grossSalary: whatIfSalary,
       deductions,
-      regime,
-      additionalParams
+      regime: regime || 'new',
+      additionalParams: additionalParams as AdditionalParams
     };
 
     return strategy.calculateTax(params);
@@ -207,9 +207,10 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
       <TaxSummaryCard
         takeHome={taxData.takeHomeSalary || 0}
         effectiveTaxRate={taxData.effectiveTaxRate || 0}
-        userBracket={taxData.marginalTaxRate}
+        userBracket={taxData.marginalTaxRate || 0}
         viewMode={viewMode}
         onToggleView={setViewMode}
+        primaryCurrency={strategy.currency}
       />
 
       {/* Tax Breakdown */}
@@ -322,39 +323,48 @@ const StrategyBasedTaxCalculator: React.FC<StrategyBasedTaxCalculatorProps> = ({
       <TaxBracketTable
         brackets={taxData.brackets || []}
         userBracketIdx={userBracketIdx}
-        currency={strategy.currency}
+        taxableIncome={taxData.taxableIncome || 0}
+        viewMode={viewMode}
+        currencySymbol={strategy.currency}
+        getValue={getValue}
       />
 
       {/* Advanced Options */}
       <AdvancedOptions
-        showAdvanced={showAdvanced}
-        toggleAdvanced={toggleAdvanced}
-        deductionFields={deductionFields}
+        isVisible={showAdvanced}
+        onToggle={toggleAdvanced}
         deductions={deductions}
-        updateDeduction={updateDeduction}
-        totalDeductions={totalDeductions}
-        currency={strategy.currency}
+        onUpdateDeduction={updateDeduction}
+        fields={deductionFields}
+        description="Deductions reduce your taxable income before tax calculation."
       />
 
       {/* What If Calculator */}
       <WhatIfCalculator
-        showWhatIf={showWhatIf}
-        toggleWhatIf={toggleWhatIf}
+        isVisible={showWhatIf}
+        onToggle={toggleWhatIf}
         whatIfSalary={whatIfSalary}
-        setWhatIfSalary={setWhatIfSalary}
+        onSalaryChange={setWhatIfSalary}
+        currentTaxData={taxData}
         whatIfTaxData={whatIfTaxData}
+        currentSalary={salaryData.grossSalary}
+        currencySymbol={strategy.currency}
         showCalculationModal={showCalculationModal}
-        setShowCalculationModal={setShowCalculationModal}
-        originalSalary={salaryData.grossSalary}
-        currency={strategy.currency}
+        onToggleCalculationModal={() => setShowCalculationModal(!showCalculationModal)}
         countryName={salaryData.country}
+        getValue={getValue}
       />
 
       {/* Next Button */}
       <div className="flex justify-end">
         <button
           onClick={onNext}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={!taxData.totalTax || taxData.totalTax <= 0 || !taxData.takeHomeSalary || taxData.takeHomeSalary <= 0}
+          className={`px-6 py-2 rounded-lg transition-colors ${
+            taxData.totalTax && taxData.totalTax > 0 && taxData.takeHomeSalary && taxData.takeHomeSalary > 0
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
         >
           Next
         </button>

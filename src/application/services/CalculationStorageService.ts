@@ -1,6 +1,7 @@
 export interface SavedCalculationData {
   salaryData: {
     country: string;
+    countryCode: string;
     state: string;
     stateId: string;
     city: string;

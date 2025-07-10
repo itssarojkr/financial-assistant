@@ -7,6 +7,7 @@ export interface ExpenseFilter {
   amountRange?: { min: number; max: number };
   currency?: string;
   searchTerm?: string;
+  [key: string]: unknown;
 }
 
 export interface ExpenseStats {
@@ -149,6 +150,43 @@ export class OptimizedExpenseService {
     this.setCache(cacheKey, expenses);
     
     return expenses;
+  }
+
+  /**
+   * Get expense categories
+   */
+  async getCategories(): Promise<Array<{ id: number; name: string; icon: string; color: string }>> {
+    const cacheKey = 'expense_categories';
+    const cached = this.getFromCache(cacheKey);
+    
+    if (cached) {
+      return cached as Array<{ id: number; name: string; icon: string; color: string }>;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .select('id, name, icon, color')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        return [];
+      }
+
+      const categories = (data || []).map(category => ({
+        id: category.id,
+        name: category.name,
+        icon: category.icon || 'tag',
+        color: category.color || '#6B7280'
+      }));
+      
+      this.setCache(cacheKey, categories);
+      return categories;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
   }
 
   /**

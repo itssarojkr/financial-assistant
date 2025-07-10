@@ -238,24 +238,24 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <Label className="text-muted-foreground">Country</Label>
-              <p className="font-medium">{data.country}</p>
+              <p className="font-medium">{data.country || 'N/A'}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Salary</Label>
-              <p className="font-medium">{formatCurrency(data.salary, data.currency)}</p>
+              <p className="font-medium">{formatCurrency(data.salary || 0, data.currency || 'USD')}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Tax Amount</Label>
-              <p className="font-medium text-red-600">{formatCurrency(data.taxAmount, data.currency)}</p>
+              <p className="font-medium text-red-600">{formatCurrency(data.taxAmount || 0, data.currency || 'USD')}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Net Salary</Label>
-              <p className="font-medium text-green-600">{formatCurrency(data.netSalary, data.currency)}</p>
+              <p className="font-medium text-green-600">{formatCurrency(data.netSalary || 0, data.currency || 'USD')}</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <Badge variant="outline">
-              {data.effectiveTaxRate.toFixed(1)}% effective rate
+              {data.effectiveTaxRate ? data.effectiveTaxRate.toFixed(1) : '0.0'}% effective rate
             </Badge>
             {data.notes && (
               <p className="text-sm text-muted-foreground truncate max-w-32">

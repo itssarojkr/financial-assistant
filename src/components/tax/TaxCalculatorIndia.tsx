@@ -207,6 +207,7 @@ const TaxCalculatorIndia: React.FC<TaxCalculatorIndiaProps> = ({
   // Update main tax data when calculation changes
   React.useEffect(() => {
     if (mainTaxCalculation) {
+      console.log('India TaxCalculator calling setTaxData with:', mainTaxCalculation);
       setTaxData({
         brackets: mainTaxCalculation.brackets,
         totalTax: mainTaxCalculation.totalTax,

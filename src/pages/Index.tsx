@@ -1,10 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserDataService, TaxCalculationData } from '@/application/services/UserDataService';
@@ -19,12 +16,17 @@ import { FinancialDashboard } from '@/components/dashboard/FinancialDashboard';
 import { SignInModal } from '@/components/auth/SignInModal';
 import { SaveCalculationModal } from '@/components/modals/SaveCalculationModal';
 import { LoadCalculationModal } from '@/components/modals/LoadCalculationModal';
-import { Calculator, Globe, TrendingUp, Save, BarChart3, FolderOpen, Star } from 'lucide-react';
+import { Calculator, Globe, TrendingUp, Save, BarChart3, FolderOpen, Star, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { useMobile } from '@/presentation/hooks/ui/useMobile';
 import MobileIndex from './MobileIndex';
 import { useLocation } from 'react-router-dom';
 import { convertCurrency } from '@/lib/utils';
-import { TaxStrategyFactory } from '@/lib/tax-strategy';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/hooks/use-error-boundary';
+import { Stepper } from '@/components/Stepper';
 
 export interface SalaryData {
   country: string;
@@ -133,31 +135,95 @@ interface SavedCalculation {
   updated_at: string;
 }
 
-interface TaxCalculationData {
-  country: string;
-  salary: number;
-  currency: string;
-  taxAmount: number;
-  netSalary: number;
-  effectiveTaxRate: number;
-  expenseData?: ExpenseData;
+// Add the interface definition for LoadCalculationModalSavedCalculation
+interface LoadCalculationModalSavedCalculation {
+  id: string;
+  data_name: string;
+  data_content: {
+    country: string;
+    countryCode?: string;
+    state?: string;
+    stateId?: string;
+    city?: string;
+    cityId?: string;
+    locality?: string;
+    localityId?: string;
+    isNative?: boolean;
+    currency: string;
+    salary: number;
+    netSalary: number;
+    taxAmount: number;
+    effectiveTaxRate: number;
+    expenseData?: {
+      rent: number;
+      food: number;
+      transport: number;
+      utilities: number;
+      healthcare: number;
+      other: number;
+      total: number;
+    };
+  };
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-// Helper to get default currency for a country code
+// Add proper type definitions for the data structures
+interface ExtendedTaxCalculationData extends TaxCalculationData {
+  countryCode?: string;
+}
+
+interface ExtendedSavedCalculation extends SavedCalculation {
+  data_content: ExtendedTaxCalculationData;
+}
+
+interface ExistingCalculation {
+  id: string;
+  data_name: string;
+  data_content: TaxCalculationData;
+}
+
+// Helper to get default currency for a country code or country name
 function getDefaultCurrencyForCountry(countryCode: string): string {
-  switch (countryCode) {
-    case 'IN': return 'INR';
-    case 'US': return 'USD';
-    case 'CA': return 'CAD';
-    case 'GB': return 'GBP';
-    case 'AU': return 'AUD';
-    case 'BR': return 'BRL';
-    case 'ZA': return 'ZAR';
-    case 'FR': return 'EUR';
-    case 'DE': return 'EUR';
-    case 'CN': return 'CNY';
-    case 'JP': return 'JPY';
-    default: return 'USD';
+  switch (countryCode.toUpperCase()) {
+    case 'IN':
+    case 'INDIA':
+      return 'INR';
+    case 'US':
+    case 'UNITED STATES':
+    case 'USA':
+      return 'USD';
+    case 'CA':
+    case 'CANADA':
+      return 'CAD';
+    case 'GB':
+    case 'UNITED KINGDOM':
+    case 'UK':
+      return 'GBP';
+    case 'AU':
+    case 'AUSTRALIA':
+      return 'AUD';
+    case 'BR':
+    case 'BRAZIL':
+      return 'BRL';
+    case 'ZA':
+    case 'SOUTH AFRICA':
+      return 'ZAR';
+    case 'FR':
+    case 'FRANCE':
+      return 'EUR';
+    case 'DE':
+    case 'GERMANY':
+      return 'EUR';
+    case 'CN':
+    case 'CHINA':
+      return 'CNY';
+    case 'JP':
+    case 'JAPAN':
+      return 'JPY';
+    default:
+      return 'USD';
   }
 }
 
@@ -170,6 +236,74 @@ function formatCurrency(amount: number, code: string) {
   });
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// Place type guard functions above their first usage
+function isCanadaTaxData(data: TaxData | CanadaTaxData): data is CanadaTaxData {
+  return data && typeof (data as CanadaTaxData).provTax !== 'undefined';
+}
+function isUKTaxData(data: TaxData | UKTaxData): data is UKTaxData {
+  return data && typeof (data as UKTaxData).incomeTax !== 'undefined' && typeof (data as UKTaxData).ni !== 'undefined';
+}
+function isAustraliaTaxData(data: TaxData | AustraliaTaxData): data is AustraliaTaxData {
+  return data && typeof (data as AustraliaTaxData).incomeTax !== 'undefined' && typeof (data as AustraliaTaxData).super !== 'undefined';
+}
+function isGermanyTaxData(data: TaxData | GermanyTaxData): data is GermanyTaxData {
+  return data && typeof (data as GermanyTaxData).soli !== 'undefined';
+}
+function isFranceTaxData(data: TaxData | FranceTaxData): data is FranceTaxData {
+  return data && typeof (data as FranceTaxData).csgcrds !== 'undefined';
+}
+function isBrazilTaxData(data: TaxData | BrazilTaxData): data is BrazilTaxData {
+  return data && typeof (data as BrazilTaxData).inss !== 'undefined';
+}
+function isSouthAfricaTaxData(data: TaxData | SouthAfricaTaxData): data is SouthAfricaTaxData {
+  return data && typeof (data as SouthAfricaTaxData).rebate !== 'undefined';
+}
+
+// Helper: default objects for each country-specific tax type
+const defaultCanadaTaxData: CanadaTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  provTax: 0, cpp: 0, ei: 0, federalTaxable: 0, provTaxable: 0, brackets: []
+};
+const defaultUKTaxData: UKTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  incomeTax: 0, ni: 0, studentLoan: 0, taxable: 0, brackets: []
+};
+const defaultAustraliaTaxData: AustraliaTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  incomeTax: 0, medicareSurcharge: 0, super: 0, taxable: 0, brackets: []
+};
+const defaultGermanyTaxData: GermanyTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  incomeTax: 0, soli: 0, churchTax: 0, taxable: 0, brackets: []
+};
+const defaultFranceTaxData: FranceTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  incomeTax: 0, csgcrds: 0, taxable: 0, brackets: []
+};
+const defaultBrazilTaxData: BrazilTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  inss: 0, irpf: 0, taxable: 0, brackets: []
+};
+const defaultSouthAfricaTaxData: SouthAfricaTaxData = {
+  federalTax: 0, stateTax: 0, socialSecurity: 0, medicare: 0, totalTax: 0, takeHomeSalary: 0, taxableIncome: 0,
+  incomeTax: 0, rebate: 0, uif: 0, taxable: 0, brackets: []
+};
+
+const steps = [
+  { label: 'Location & Salary', value: 'basics' },
+  { label: 'Tax Calculation', value: 'taxes' },
+  { label: 'Analysis', value: 'analysis' },
+];
+
 const Index = () => {
   // All hooks at the top!
   const { isMobile } = useMobile();
@@ -179,8 +313,8 @@ const Index = () => {
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSaveCalculationModal, setShowSaveCalculationModal] = useState(false);
   const [showLoadCalculationModal, setShowLoadCalculationModal] = useState(false);
-  const [existingCalculation, setExistingCalculation] = useState<SavedCalculation | null>(null);
-  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>([]);
+  const [existingCalculation, setExistingCalculation] = useState<ExtendedSavedCalculation | null>(null);
+  const [savedCalculations, setSavedCalculations] = useState<LoadCalculationModalSavedCalculation[]>([]);
   const [isLoadingSavedCalculations, setIsLoadingSavedCalculations] = useState(false);
   const [salaryData, setSalaryData] = useState<SalaryData>({
     country: '',
@@ -242,6 +376,119 @@ const Index = () => {
   const [indiaRegime, setIndiaRegime] = useState<'new' | 'old'>('new');
   const [usFilingStatus, setUsFilingStatus] = useState<'single' | 'married' | 'head'>('single');
   const [usState, setUsState] = useState('');
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const debouncedSalaryData = useDebounce(salaryData, 400);
+
+  // Move useMemo hooks to the very top, before any conditional logic
+  const memoizedTaxData = useMemo(() => {
+    // Calculate current tax data based on country instead of relying on mutable variable
+    let currentTaxData: TaxData;
+    
+    switch (salaryData.country) {
+      case 'India':
+        currentTaxData = taxDataIndia;
+        break;
+      case 'United States':
+        currentTaxData = taxDataUS;
+        break;
+      case 'Canada':
+        currentTaxData = taxDataCanada;
+        break;
+      case 'United Kingdom':
+      case 'UK':
+        currentTaxData = taxDataUK;
+        break;
+      case 'Australia':
+        currentTaxData = taxDataAustralia;
+        break;
+      case 'Germany':
+        currentTaxData = taxDataGermany;
+        break;
+      case 'France':
+        currentTaxData = taxDataFrance;
+        break;
+      case 'Brazil':
+        currentTaxData = taxDataBrazil;
+        break;
+      case 'South Africa':
+        currentTaxData = taxDataSouthAfrica;
+        break;
+      default:
+        currentTaxData = {
+          federalTax: 0,
+          stateTax: 0,
+          socialSecurity: 0,
+          medicare: 0,
+          totalTax: 0,
+          takeHomeSalary: 0,
+          taxableIncome: 0,
+        };
+    }
+
+    console.log('memoizedTaxData updated:', {
+      currentTaxData,
+      takeHomeSalary: currentTaxData.takeHomeSalary,
+      totalTax: currentTaxData.totalTax,
+      country: salaryData.country
+    });
+    return currentTaxData;
+  }, [
+    salaryData.country,
+    taxDataIndia,
+    taxDataUS,
+    taxDataCanada,
+    taxDataUK,
+    taxDataAustralia,
+    taxDataGermany,
+    taxDataFrance,
+    taxDataBrazil,
+    taxDataSouthAfrica
+  ]);
+
+  // Create a proper setTaxData function that updates the correct country-specific state
+  const setTaxData = useCallback((newTaxData: TaxData | ((prev: TaxData) => TaxData)) => {
+    const taxDataToSet = typeof newTaxData === 'function' ? newTaxData(memoizedTaxData) : newTaxData;
+    
+    console.log('setTaxData called with:', taxDataToSet, 'for country:', salaryData.country);
+    
+    switch (salaryData.country) {
+      case 'India':
+        setTaxDataIndia(taxDataToSet);
+        break;
+      case 'United States':
+        setTaxDataUS(taxDataToSet);
+        break;
+      case 'Canada':
+        setTaxDataCanada({ ...defaultCanadaTaxData, ...taxDataToSet });
+        break;
+      case 'United Kingdom':
+      case 'UK':
+        setTaxDataUK({ ...defaultUKTaxData, ...taxDataToSet });
+        break;
+      case 'Australia':
+        setTaxDataAustralia({ ...defaultAustraliaTaxData, ...taxDataToSet });
+        break;
+      case 'Germany':
+        setTaxDataGermany({ ...defaultGermanyTaxData, ...taxDataToSet });
+        break;
+      case 'France':
+        setTaxDataFrance({ ...defaultFranceTaxData, ...taxDataToSet });
+        break;
+      case 'Brazil':
+        setTaxDataBrazil({ ...defaultBrazilTaxData, ...taxDataToSet });
+        break;
+      case 'South Africa':
+        setTaxDataSouthAfrica({ ...defaultSouthAfricaTaxData, ...taxDataToSet });
+        break;
+      default:
+        console.warn('No tax data setter found for country:', salaryData.country);
+    }
+  }, [salaryData.country, memoizedTaxData, setTaxDataIndia, setTaxDataUS, setTaxDataCanada, setTaxDataUK, setTaxDataAustralia, setTaxDataGermany, setTaxDataFrance, setTaxDataBrazil, setTaxDataSouthAfrica, defaultCanadaTaxData, defaultUKTaxData, defaultAustraliaTaxData, defaultGermanyTaxData, defaultFranceTaxData, defaultBrazilTaxData, defaultSouthAfricaTaxData]);
+
+  const memoizedExpenseData = useMemo(() => {
+    return expenseData;
+  }, [expenseData]);
 
   // Debug logging
   useEffect(() => {
@@ -273,8 +520,8 @@ const Index = () => {
       setSalaryData(prev => ({
         ...prev,
         grossSalary: budget.amount,
-        currency: 'USD', // Default currency, could be enhanced to detect from budget
-        countryCode: prev.countryCode || ''
+        currency: 'USD',
+        countryCode: prev.countryCode || '',
       }));
       
       // Show a toast notification
@@ -293,7 +540,10 @@ const Index = () => {
     if (!user) {
       const savedData = CalculationStorageService.getSavedCalculation();
       if (savedData) {
-        setSalaryData(savedData.salaryData);
+        setSalaryData({
+          ...savedData.salaryData,
+          countryCode: savedData.salaryData.countryCode || '',
+        });
         setExpenseData(savedData.expenseData);
         if (savedData.countrySpecificData.indiaRegime) {
           setIndiaRegime(savedData.countrySpecificData.indiaRegime);
@@ -313,25 +563,53 @@ const Index = () => {
               setTaxDataUS(savedData.taxData);
               break;
             case 'Canada':
-              setTaxDataCanada(savedData.taxData as CanadaTaxData);
+              if (isCanadaTaxData(savedData.taxData)) {
+                setTaxDataCanada({ ...defaultCanadaTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataCanada(defaultCanadaTaxData);
+              }
               break;
             case 'United Kingdom':
-              setTaxDataUK(savedData.taxData as UKTaxData);
+              if (isUKTaxData(savedData.taxData)) {
+                setTaxDataUK({ ...defaultUKTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataUK(defaultUKTaxData);
+              }
               break;
             case 'Australia':
-              setTaxDataAustralia(savedData.taxData as AustraliaTaxData);
+              if (isAustraliaTaxData(savedData.taxData)) {
+                setTaxDataAustralia({ ...defaultAustraliaTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataAustralia(defaultAustraliaTaxData);
+              }
               break;
             case 'Germany':
-              setTaxDataGermany(savedData.taxData as GermanyTaxData);
+              if (isGermanyTaxData(savedData.taxData)) {
+                setTaxDataGermany({ ...defaultGermanyTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataGermany(defaultGermanyTaxData);
+              }
               break;
             case 'France':
-              setTaxDataFrance(savedData.taxData as FranceTaxData);
+              if (isFranceTaxData(savedData.taxData)) {
+                setTaxDataFrance({ ...defaultFranceTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataFrance(defaultFranceTaxData);
+              }
               break;
             case 'Brazil':
-              setTaxDataBrazil(savedData.taxData as BrazilTaxData);
+              if (isBrazilTaxData(savedData.taxData)) {
+                setTaxDataBrazil({ ...defaultBrazilTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataBrazil(defaultBrazilTaxData);
+              }
               break;
             case 'South Africa':
-              setTaxDataSouthAfrica(savedData.taxData as SouthAfricaTaxData);
+              if (isSouthAfricaTaxData(savedData.taxData)) {
+                setTaxDataSouthAfrica({ ...defaultSouthAfricaTaxData, ...savedData.taxData });
+              } else {
+                setTaxDataSouthAfrica(defaultSouthAfricaTaxData);
+              }
               break;
           }
         }
@@ -345,69 +623,27 @@ const Index = () => {
 
   // Save calculation data when it changes (for anonymous users)
   useEffect(() => {
-    let taxData: TaxData = {};
-    let setTaxData: React.Dispatch<React.SetStateAction<TaxData>> = () => {};
-    switch (salaryData.country) {
-      case 'India':
-        taxData = taxDataIndia;
-        setTaxData = setTaxDataIndia;
-        break;
-      case 'United States':
-        taxData = taxDataUS;
-        setTaxData = setTaxDataUS;
-        break;
-      case 'Canada':
-        taxData = taxDataCanada;
-        setTaxData = setTaxDataCanada;
-        break;
-      case 'United Kingdom':
-      case 'UK':
-        taxData = taxDataUK;
-        setTaxData = setTaxDataUK;
-        break;
-      case 'Australia':
-        taxData = taxDataAustralia;
-        setTaxData = setTaxDataAustralia;
-        break;
-      case 'Germany':
-        taxData = taxDataGermany;
-        setTaxData = setTaxDataGermany;
-        break;
-      case 'France':
-        taxData = taxDataFrance;
-        setTaxData = setTaxDataFrance;
-        break;
-      case 'Brazil':
-        taxData = taxDataBrazil;
-        setTaxData = setTaxDataBrazil;
-        break;
-      case 'South Africa':
-        taxData = taxDataSouthAfrica;
-        setTaxData = setTaxDataSouthAfrica;
-        break;
-      default:
-        taxData = {};
-        setTaxData = () => {};
-    }
-    const hasCalculation = taxData.totalTax > 0 && salaryData.grossSalary > 0;
-    if (!user && hasCalculation) {
-      const dataToSave = {
-        salaryData,
-        taxData,
+    if (!user && salaryData.country && salaryData.grossSalary > 0) {
+      const calculationData = {
+        salaryData: {
+          ...salaryData,
+          countryCode: salaryData.countryCode || '',
+        },
+        taxData: memoizedTaxData,
         expenseData,
         countrySpecificData: {
           indiaRegime,
           usFilingStatus,
-          usState
-        }
+          usState,
+        },
       };
-      CalculationStorageService.saveCalculation(dataToSave);
+      CalculationStorageService.saveCalculation(calculationData);
     }
-  }, [user, salaryData, taxDataIndia, taxDataUS, taxDataCanada, taxDataUK, taxDataAustralia, taxDataGermany, taxDataFrance, taxDataBrazil, taxDataSouthAfrica, expenseData, indiaRegime, usFilingStatus, usState]);
+  }, [salaryData, memoizedTaxData, expenseData, indiaRegime, usFilingStatus, usState, user]);
 
-  // Estimate expenses when salary data changes
+  // Calculate expenses when salary or location changes
   useEffect(() => {
-    if (salaryData.grossSalary > 0 && salaryData.country && salaryData.city) {
+    if (salaryData.country && salaryData.city && salaryData.grossSalary > 0) {
       // Import the estimateExpenses function from LivingExpenses
       const estimateExpenses = (country: string, city: string, grossSalary: number) => {
         // Basic expense estimation logic
@@ -483,259 +719,101 @@ const Index = () => {
       const estimatedExpenses = estimateExpenses(salaryData.country, salaryData.city, salaryData.grossSalary);
       setExpenseData(estimatedExpenses);
     }
-  }, [salaryData.grossSalary, salaryData.country, salaryData.city]);
+  }, [debouncedSalaryData.country, debouncedSalaryData.city, debouncedSalaryData.grossSalary]);
 
-  // Select correct taxData and setTaxData for the selected country
-  let taxData: TaxData = {};
-  let setTaxData: React.Dispatch<React.SetStateAction<TaxData>> = () => {};
-  switch (salaryData.country) {
-    case 'India':
-      taxData = taxDataIndia;
-      setTaxData = setTaxDataIndia;
-      break;
-    case 'United States':
-      taxData = taxDataUS;
-      setTaxData = setTaxDataUS;
-      break;
-    case 'Canada':
-      taxData = taxDataCanada;
-      setTaxData = setTaxDataCanada;
-      break;
-    case 'United Kingdom':
-    case 'UK':
-      taxData = taxDataUK;
-      setTaxData = setTaxDataUK;
-      break;
-    case 'Australia':
-      taxData = taxDataAustralia;
-      setTaxData = setTaxDataAustralia;
-      break;
-    case 'Germany':
-      taxData = taxDataGermany;
-      setTaxData = setTaxDataGermany;
-      break;
-    case 'France':
-      taxData = taxDataFrance;
-      setTaxData = setTaxDataFrance;
-      break;
-    case 'Brazil':
-      taxData = taxDataBrazil;
-      setTaxData = setTaxDataBrazil;
-      break;
-    case 'South Africa':
-      taxData = taxDataSouthAfrica;
-      setTaxData = setTaxDataSouthAfrica;
-      break;
-    default:
-      taxData = {};
-      setTaxData = () => {};
-  }
-
-  // Add this useEffect after all state declarations and before rendering logic
+  // Auto-detect country/currency if not set
   useEffect(() => {
-    if (!salaryData.countryCode || !salaryData.grossSalary || salaryData.grossSalary <= 0) return;
-    const strategy = TaxStrategyFactory.createStrategy(salaryData.countryCode);
-    if (!strategy) return;
+    if (!salaryData.country) {
+      const userLanguage = navigator.language || 'en-US';
+      // Example: 'en-US' => 'US'
+      const countryCode = userLanguage.split('-')[1] || 'US';
+      // Map countryCode to country name and currency (implement mapping as needed)
+      // For demo, set US and USD
+      setSalaryData(prev => ({
+        ...prev,
+        country: prev.country || 'United States',
+        countryCode: prev.countryCode || 'US',
+        currency: prev.currency || 'USD',
+      }));
+    }
+    // Remember last-used values
+    const lastSalaryData = localStorage.getItem('lastSalaryData');
+    if (lastSalaryData) {
+      const parsed = JSON.parse(lastSalaryData);
+      setSalaryData({
+        ...parsed,
+        countryCode: parsed.countryCode || '',
+      });
+    }
+  }, []);
+  useEffect(() => {
+    // Save last-used values
+    localStorage.setItem('lastSalaryData', JSON.stringify(salaryData));
+  }, [salaryData]);
 
-    // Collect regime and additional params if needed
-    let regime = undefined;
-    let additionalParams = {};
-    switch (salaryData.country) {
-      case 'India':
-        regime = indiaRegime;
-        break;
-      case 'United States':
-        additionalParams = { filingStatus: usFilingStatus, state: usState };
-        break;
-      default:
-        break;
+  useEffect(() => {
+    if (salaryData.country) {
+      const code = typeof salaryData.countryCode === 'string' ? salaryData.countryCode : '';
+      const defaultCurrency = getDefaultCurrencyForCountry(code || salaryData.country);
+      if (salaryData.currency !== defaultCurrency) {
+        setSalaryData(prev => ({
+          ...prev,
+          currency: defaultCurrency,
+        }));
+      }
+    }
+  }, [salaryData.country, salaryData.countryCode]);
+
+  // Load saved preferences from localStorage on mount
+  useEffect(() => {
+    const savedCurrency = localStorage.getItem('userCurrency');
+    const savedCountry = localStorage.getItem('userCountry');
+    const savedCountryCode = localStorage.getItem('userCountryCode');
+    const savedIndiaRegime = localStorage.getItem('indiaRegime');
+    const savedUsFilingStatus = localStorage.getItem('usFilingStatus');
+    const savedUsState = localStorage.getItem('usState');
+
+    // Only load saved preferences if no country is currently selected
+    if (!salaryData.country) {
+      if (savedCountry) {
+        setSalaryData(prev => ({
+          ...prev,
+          country: savedCountry,
+        }));
+      }
+      if (savedCountryCode) {
+        setSalaryData(prev => ({
+          ...prev,
+          countryCode: savedCountryCode,
+        }));
+      }
+      if (savedCurrency) {
+        setSalaryData(prev => ({
+          ...prev,
+          currency: savedCurrency,
+        }));
+      }
     }
 
-    const regimeValue = typeof regime === 'string' ? regime : 'new';
-    const params = {
-      grossSalary: salaryData.grossSalary,
-      deductions: {}, // TODO: connect to deductions if available
-      regime: regimeValue,
-      additionalParams
-    };
-    const result = strategy.calculateTax(params);
-
-    // Update the correct taxData state
-    switch (salaryData.country) {
-      case 'India':
-        setTaxDataIndia({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-        });
-        break;
-      case 'United States':
-        setTaxDataUS({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-        });
-        break;
-      case 'Canada':
-        setTaxDataCanada({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          provTax: 0,
-          cpp: 0,
-          ei: 0,
-          federalTaxable: 0,
-          provTaxable: 0,
-        });
-        break;
-      case 'United Kingdom':
-      case 'UK':
-        setTaxDataUK({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          incomeTax: 0,
-          ni: 0,
-          studentLoan: 0,
-          taxable: 0,
-        });
-        break;
-      case 'Australia':
-        setTaxDataAustralia({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          incomeTax: 0,
-          medicareSurcharge: 0,
-          super: 0,
-          taxable: 0,
-        });
-        break;
-      case 'Germany':
-        setTaxDataGermany({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          incomeTax: 0,
-          soli: 0,
-          churchTax: 0,
-          taxable: 0,
-        });
-        break;
-      case 'France':
-        setTaxDataFrance({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          incomeTax: 0,
-          csgcrds: 0,
-          taxable: 0,
-        });
-        break;
-      case 'Brazil':
-        setTaxDataBrazil({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          inss: 0,
-          irpf: 0,
-          taxable: 0,
-        });
-        break;
-      case 'South Africa':
-        setTaxDataSouthAfrica({
-          federalTax: result.breakdown?.incomeTax ?? 0,
-          stateTax: result.breakdown?.stateTax ?? 0,
-          socialSecurity: result.additionalTaxes?.socialSecurity ?? 0,
-          medicare: result.additionalTaxes?.medicare ?? 0,
-          totalTax: result.totalTax ?? 0,
-          takeHomeSalary: result.takeHomeSalary ?? 0,
-          taxableIncome: result.taxableIncome ?? 0,
-          brackets: result.brackets ?? [],
-          effectiveTaxRate: result.effectiveTaxRate ?? 0,
-          marginalTaxRate: result.marginalTaxRate ?? 0,
-          additionalTaxes: result.additionalTaxes ?? {},
-          breakdown: result.breakdown ?? {},
-          incomeTax: 0,
-          rebate: 0,
-          uif: 0,
-          taxable: 0,
-        });
-        break;
-      default:
-        break;
+    // Load other preferences regardless
+    if (savedIndiaRegime) {
+      setIndiaRegime(savedIndiaRegime as 'new' | 'old');
     }
+    if (savedUsFilingStatus) {
+      setUsFilingStatus(savedUsFilingStatus as 'single' | 'married' | 'head');
+    }
+    if (savedUsState) {
+      setUsState(savedUsState);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('userCurrency', salaryData.currency);
+    localStorage.setItem('userCountry', salaryData.country);
+    localStorage.setItem('userCountryCode', salaryData.countryCode);
+    localStorage.setItem('indiaRegime', indiaRegime);
+    localStorage.setItem('usFilingStatus', usFilingStatus);
+    localStorage.setItem('usState', usState);
   }, [salaryData, indiaRegime, usFilingStatus, usState]);
 
   // Show loading while detecting platform
@@ -744,30 +822,28 @@ const Index = () => {
   }
 
   // Original web version logic
-  const isSalaryValid = salaryData.grossSalary > 0;
+  const isSalaryValid = Boolean(salaryData.grossSalary > 0);
   
   // Improved hasCalculation logic - check if user has completed the calculation process
-  const hasCalculation = (
-    salaryData.grossSalary > 0 && 
-    salaryData.country && 
-    taxData.totalTax !== undefined && 
-    taxData.totalTax >= 0 && 
-    taxData.takeHomeSalary !== undefined && 
-    taxData.takeHomeSalary >= 0
+  const hasCalculation = Boolean(
+    memoizedTaxData.totalTax !== undefined &&
+    memoizedTaxData.totalTax >= 0 &&
+    memoizedTaxData.takeHomeSalary !== undefined &&
+    memoizedTaxData.takeHomeSalary >= 0
   );
 
   // Debug logging for hasCalculation
   console.log('hasCalculation debug:', {
     salaryDataGrossSalary: salaryData.grossSalary,
     salaryDataCountry: salaryData.country,
-    taxDataTotalTax: taxData.totalTax,
-    taxDataTakeHomeSalary: taxData.takeHomeSalary,
+    taxDataTotalTax: memoizedTaxData.totalTax,
+    taxDataTakeHomeSalary: memoizedTaxData.takeHomeSalary,
     hasCalculation: hasCalculation,
     conditions: {
       hasSalary: salaryData.grossSalary > 0,
       hasCountry: !!salaryData.country,
-      hasTotalTax: taxData.totalTax !== undefined && taxData.totalTax >= 0,
-      hasTakeHomeSalary: taxData.takeHomeSalary !== undefined && taxData.takeHomeSalary >= 0
+      hasTotalTax: memoizedTaxData.totalTax !== undefined && memoizedTaxData.totalTax >= 0,
+      hasTakeHomeSalary: memoizedTaxData.takeHomeSalary !== undefined && memoizedTaxData.takeHomeSalary >= 0
     }
   });
 
@@ -780,13 +856,13 @@ const Index = () => {
       if (data && data.length > 0) {
         // Find calculation with similar data
         const similar = data.find(calc => {
-          const existing = calc.data_content;
+          const existing = calc.data_content as ExtendedTaxCalculationData;
           return (
             existing.country === salaryData.country &&
             existing.salary === salaryData.grossSalary &&
             existing.currency === salaryData.currency &&
-            Math.abs(existing.taxAmount - taxData.totalTax) < 1 &&
-            Math.abs(existing.netSalary - taxData.takeHomeSalary) < 1
+            Math.abs(existing.taxAmount - memoizedTaxData.totalTax) < 1 &&
+            Math.abs(existing.netSalary - memoizedTaxData.takeHomeSalary) < 1
           );
         });
         return similar || null;
@@ -797,10 +873,57 @@ const Index = () => {
     return null;
   };
 
+  // Validation function to check if all required details are entered
+  const validateCalculationForSave = () => {
+    const errors: string[] = [];
+    
+    // Required fields
+    if (!salaryData.country) {
+      errors.push("Country is required");
+    }
+    
+    if (!salaryData.state) {
+      errors.push("State/Province is required");
+    }
+    
+    if (!salaryData.grossSalary || salaryData.grossSalary <= 0) {
+      errors.push("Valid salary amount is required");
+    }
+    
+    if (!salaryData.currency) {
+      errors.push("Currency is required");
+    }
+    
+    // Check if tax calculation is complete
+    if (!memoizedTaxData.totalTax && memoizedTaxData.totalTax !== 0) {
+      errors.push("Tax calculation is not complete");
+    }
+    
+    if (!memoizedTaxData.takeHomeSalary && memoizedTaxData.takeHomeSalary !== 0) {
+      errors.push("Take-home salary calculation is not complete");
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
   // Save calculation functionality
   const handleSaveCalculation = async () => {
     if (!user) {
       setShowSignInModal(true);
+      return;
+    }
+
+    // Validate required fields
+    const validation = validateCalculationForSave();
+    if (!validation.isValid) {
+      toast({
+        title: "Incomplete Information",
+        description: `Please complete the following: ${validation.errors.join(', ')}`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -816,7 +939,7 @@ const Index = () => {
     // Check for existing calculation
     const existing = await checkExistingCalculation();
     if (existing) {
-      setExistingCalculation(existing);
+      setExistingCalculation(existing as ExtendedSavedCalculation | null);
       setShowSaveCalculationModal(true);
       return;
     }
@@ -832,14 +955,22 @@ const Index = () => {
 
     const calculationData: TaxCalculationData = {
       country: salaryData.country,
+      countryCode: salaryData.countryCode,
+      state: salaryData.state,
+      stateId: salaryData.stateId,
+      city: salaryData.city,
+      cityId: salaryData.cityId,
+      locality: salaryData.locality,
+      localityId: salaryData.localityId,
+      isNative: salaryData.isNative,
       salary: salaryData.grossSalary,
       currency: salaryData.currency,
-      taxAmount: taxData.totalTax,
-      netSalary: taxData.takeHomeSalary,
-      effectiveTaxRate: taxData.effectiveTaxRate || (taxData.totalTax / salaryData.grossSalary) * 100,
-      deductions: taxData.breakdown?.deductions || 0,
-      rebates: taxData.breakdown?.rebates || 0,
-      additionalTaxes: taxData.breakdown?.additionalTaxes || 0,
+      taxAmount: memoizedTaxData.totalTax,
+      netSalary: memoizedTaxData.takeHomeSalary,
+      effectiveTaxRate: memoizedTaxData.effectiveTaxRate || (memoizedTaxData.totalTax / salaryData.grossSalary) * 100,
+      deductions: memoizedTaxData.breakdown?.deductions || 0,
+      rebates: memoizedTaxData.breakdown?.rebates || 0,
+      additionalTaxes: memoizedTaxData.breakdown?.additionalTaxes || 0,
       calculationDate: new Date().toISOString(),
       notes: `${salaryData.country} - ${salaryData.state} ${salaryData.city}`,
       // Include expense data
@@ -869,8 +1000,8 @@ const Index = () => {
       } else {
         console.log('Calculation saved successfully!');
         toast({
-          title: "Calculation saved",
-          description: "Your calculation has been saved successfully.",
+          title: "Calculation saved successfully",
+          description: "Your calculation has been saved and can be accessed from the dashboard.",
         });
         setExistingCalculation(null);
       }
@@ -932,7 +1063,7 @@ const Index = () => {
           variant: "destructive",
         });
       } else {
-        setSavedCalculations(data || []);
+        setSavedCalculations(data as ExtendedSavedCalculation[]);
       }
     } catch (error) {
       console.error('Error loading saved calculations:', error);
@@ -946,13 +1077,21 @@ const Index = () => {
     }
   };
 
-  const loadCalculation = (calculation: SavedCalculation) => {
+  const loadCalculation = (calculation: LoadCalculationModalSavedCalculation) => {
     const data = calculation.data_content;
     
-    // Load salary data
+    // Load salary data with complete location information
     setSalaryData(prev => ({
       ...prev,
       country: data.country || '',
+      countryCode: data.countryCode || '',
+      state: data.state || '',
+      stateId: data.stateId || '',
+      city: data.city || '',
+      cityId: data.cityId || '',
+      locality: data.locality || '',
+      localityId: data.localityId || '',
+      isNative: data.isNative || false,
       grossSalary: data.salary || 0,
       currency: data.currency || 'USD',
     }));
@@ -978,25 +1117,25 @@ const Index = () => {
         setTaxDataUS(taxDataToLoad);
         break;
       case 'Canada':
-        setTaxDataCanada(taxDataToLoad as CanadaTaxData);
+        setTaxDataCanada({ ...defaultCanadaTaxData, ...taxDataToLoad });
         break;
       case 'United Kingdom':
-        setTaxDataUK(taxDataToLoad as UKTaxData);
+        setTaxDataUK({ ...defaultUKTaxData, ...taxDataToLoad });
         break;
       case 'Australia':
-        setTaxDataAustralia(taxDataToLoad as AustraliaTaxData);
+        setTaxDataAustralia({ ...defaultAustraliaTaxData, ...taxDataToLoad });
         break;
       case 'Germany':
-        setTaxDataGermany(taxDataToLoad as GermanyTaxData);
+        setTaxDataGermany({ ...defaultGermanyTaxData, ...taxDataToLoad });
         break;
       case 'France':
-        setTaxDataFrance(taxDataToLoad as FranceTaxData);
+        setTaxDataFrance({ ...defaultFranceTaxData, ...taxDataToLoad });
         break;
       case 'Brazil':
-        setTaxDataBrazil(taxDataToLoad as BrazilTaxData);
+        setTaxDataBrazil({ ...defaultBrazilTaxData, ...taxDataToLoad });
         break;
       case 'South Africa':
-        setTaxDataSouthAfrica(taxDataToLoad as SouthAfricaTaxData);
+        setTaxDataSouthAfrica({ ...defaultSouthAfricaTaxData, ...taxDataToLoad });
         break;
     }
 
@@ -1009,11 +1148,46 @@ const Index = () => {
     setShowLoadCalculationModal(false);
     toast({
       title: "Calculation loaded",
-      description: "Your saved calculation has been loaded successfully.",
+      description: "Your saved calculation has been loaded successfully. You can now review and modify the data.",
     });
 
-    // Navigate to analysis tab to show the loaded calculation
-    setActiveTab('analysis');
+    // Navigate to basics tab to start from the first step
+    setActiveTab('basics');
+  };
+
+  // Add type conversion function for SaveCalculationModal
+  const convertToExistingCalculation = (calc: ExtendedSavedCalculation | null): ExistingCalculation | undefined => {
+    if (!calc) return undefined;
+    
+    return {
+      id: calc.id,
+      data_name: calc.data_name,
+      data_content: {
+        country: calc.data_content.country || '',
+        salary: calc.data_content.salary || 0,
+        currency: calc.data_content.currency || '',
+        taxAmount: calc.data_content.taxAmount || 0,
+        netSalary: calc.data_content.netSalary || 0,
+        effectiveTaxRate: calc.data_content.effectiveTaxRate || 0,
+        deductions: calc.data_content.deductions || 0,
+        rebates: calc.data_content.rebates || 0,
+        additionalTaxes: calc.data_content.additionalTaxes || 0,
+        calculationDate: calc.data_content.calculationDate || new Date().toISOString(),
+        notes: calc.data_content.notes || '',
+        expenseData: calc.data_content.expenseData ? {
+          ...calc.data_content.expenseData,
+          total: calc.data_content.expenseData.total || 0
+        } : {
+          rent: 0,
+          utilities: 0,
+          food: 0,
+          transport: 0,
+          healthcare: 0,
+          other: 0,
+          total: 0
+        },
+      },
+    };
   };
 
   // When calculating taxes, always use the country's default currency
@@ -1031,94 +1205,218 @@ const Index = () => {
         <div className="max-w-6xl mx-auto">
           {/* Main Content */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsList className="grid w-full grid-cols-3 mb-8 sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200">
               <TabsTrigger value="basics">Location & Salary</TabsTrigger>
-              <TabsTrigger 
-                value="taxes" 
-                disabled={!salaryData.grossSalary || salaryData.grossSalary <= 0 || !salaryData.country}
-                className={(!salaryData.grossSalary || salaryData.grossSalary <= 0 || !salaryData.country) ? 'opacity-50 cursor-not-allowed' : ''}
-              >
+              <TabsTrigger value="taxes">
                 Tax Calculation
+                {(!salaryData.grossSalary || !salaryData.country) && (
+                  <AlertTriangle className="inline ml-1 text-yellow-500 w-4 h-4" aria-label="Missing info" />
+                )}
               </TabsTrigger>
-              <TabsTrigger 
-                value="analysis" 
-                disabled={!salaryData.grossSalary || salaryData.grossSalary <= 0 || !salaryData.country}
-                className={(!salaryData.grossSalary || salaryData.grossSalary <= 0 || !salaryData.country) ? 'opacity-50 cursor-not-allowed' : ''}
-              >
-                Living Costs & Savings
+              <TabsTrigger value="analysis">
+                Analysis
+                {(!salaryData.grossSalary || !salaryData.country) && (
+                  <AlertTriangle className="inline ml-1 text-yellow-500 w-4 h-4" aria-label="Missing info" />
+                )}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basics" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="w-5 h-5" />
-                      Location Details
-                    </CardTitle>
-                    <CardDescription>
-                      Select your country, state, city, and locality for accurate tax calculations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <CountrySelector 
-                      salaryData={salaryData} 
-                      setSalaryData={setSalaryData}
-                      onNext={() => setActiveTab('taxes')}
-                      salaryValid={isSalaryValid}
-                      onLoadCalculation={() => setShowLoadCalculationModal(true)}
-                      showLoadButton={!!user}
-                    />
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calculator className="w-5 h-5" />
-                      Salary Information
-                    </CardTitle>
-                    <CardDescription>
-                      Enter your annual salary to calculate take-home pay and taxes
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <SalaryInput 
-                      salaryData={salaryData} 
-                      setSalaryData={setSalaryData}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+            {/* Advanced options in Accordion for mobile */}
+            <div className="block lg:hidden">
+              <Accordion type="single" collapsible>
+                <AccordionItem value="advanced">
+                  <AccordionTrigger>Show Advanced Options</AccordionTrigger>
+                  <AccordionContent>
+                    {/* Place advanced options/components here */}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+
+            {/* Add a stepper wizard above the TabsContent for basics/taxes/analysis */}
+            <div className="mb-6">
+              <Stepper currentStep={activeTab} steps={[{label: 'Location & Salary', value: 'basics'}, {label: 'Tax Calculation', value: 'taxes'}, {label: 'Analysis', value: 'analysis'}]} />
+            </div>
+
+            <TabsContent value="basics" className="space-y-6 transition-opacity duration-200">
+              <h2 className="text-xl font-bold mb-2">Location & Salary</h2>
+              <Card>
+                <CardContent className="p-6">
+                  {/* Main content with vertical divider */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                    {/* Location Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Globe className="w-5 h-5" />
+                        <h3 className="text-lg font-semibold">Location Details</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Select your country, state, city, and locality for accurate tax calculations
+                      </p>
+                      <CountrySelector 
+                        salaryData={salaryData} 
+                        setSalaryData={setSalaryData}
+                        salaryValid={isSalaryValid}
+                        showLoadButton={false}
+                      />
+                    </div>
+
+                    {/* Vertical Divider - positioned absolutely between columns */}
+                    <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 transform -translate-x-1/2"></div>
+
+                    {/* Salary Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Calculator className="w-5 h-5" />
+                        <h3 className="text-lg font-semibold">Salary Information</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Enter your annual salary to calculate take-home pay and taxes
+                      </p>
+                      <SalaryInput 
+                        salaryData={salaryData} 
+                        setSalaryData={setSalaryData}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Buttons Section - Outside the divided layout */}
+                  <div className="mt-6">
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                      {/* Continue button */}
+                      {salaryData.country && isSalaryValid && (
+                        <Button
+                          onClick={() => setActiveTab('taxes')}
+                          className="w-full sm:w-auto min-h-[44px] touch-manipulation"
+                          disabled={!salaryData.country || !salaryData.state || !salaryData.city}
+                        >
+                          Continue to Tax Calculation
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      )}
+
+                      {/* Load button */}
+                      {user && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowLoadCalculationModal(true)}
+                          className="w-full sm:w-auto min-h-[44px] touch-manipulation"
+                        >
+                          <FolderOpen className="mr-2 h-4 w-4" />
+                          Load Saved
+                        </Button>
+                      )}
+                      
+                      {/* Reset button */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="destructive" className="w-full sm:w-auto min-h-[44px] touch-manipulation">
+                            Reset
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reset Location & Salary?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will clear all location and salary fields. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="min-h-[44px] touch-manipulation"
+                                onClick={() => setSalaryData({
+                                  country: '',
+                                  countryCode: '',
+                                  state: '',
+                                  stateId: '',
+                                  city: '',
+                                  cityId: '',
+                                  locality: '',
+                                  localityId: '',
+                                  isNative: false,
+                                  grossSalary: 0,
+                                  currency: 'USD',
+                                })}
+                              >
+                                Confirm Reset
+                              </Button>
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Progressive Disclosure: Advanced Options Accordion */}
+              <Accordion type="single" collapsible className="mt-4">
+                <AccordionItem value="advanced">
+                  <AccordionTrigger>
+                    Show Advanced Options
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    {/* Advanced options fields/components here */}
+                    <div className="text-sm text-muted-foreground">No advanced options available yet. Future settings will appear here.</div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </TabsContent>
 
-            <TabsContent value="taxes" className="space-y-6">
-              <TaxCalculator 
-                salaryData={salaryData}
-                taxData={taxData}
-                setTaxData={setTaxData}
-                onNext={() => setActiveTab('analysis')}
-                indiaRegime={indiaRegime}
-                setIndiaRegime={setIndiaRegime}
-                usFilingStatus={usFilingStatus}
-                setUsFilingStatus={setUsFilingStatus}
-                usState={usState}
-                setUsState={setUsState}
-              />
+            <TabsContent value="taxes" className="space-y-6 transition-opacity duration-200">
+              <h2 className="text-xl font-bold mb-2">Tax Calculation</h2>
+              <>
+                {salaryData.grossSalary > 0 && salaryData.country ? (
+                  <ErrorBoundary>
+                    <TaxCalculator 
+                      salaryData={salaryData}
+                      taxData={memoizedTaxData}
+                      setTaxData={setTaxData}
+                      onNext={() => setActiveTab('analysis')}
+                      indiaRegime={indiaRegime}
+                      setIndiaRegime={setIndiaRegime}
+                      usFilingStatus={usFilingStatus}
+                      setUsFilingStatus={setUsFilingStatus}
+                      usState={usState}
+                      setUsState={setUsState}
+                    />
+                  </ErrorBoundary>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    Please enter your country and annual gross salary to view tax calculations.
+                  </div>
+                )}
+              </>
+              {/* Debug info for tax calculation tab */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-muted-foreground mt-4 p-2 bg-gray-50 rounded">
+                  <strong>Debug Info:</strong><br />
+                  Salary: {salaryData.grossSalary}<br />
+                  Country: {salaryData.country}<br />
+                  Tax Data Total: {memoizedTaxData.totalTax}<br />
+                  Tax Data Take Home: {memoizedTaxData.takeHomeSalary}<br />
+                  Condition: {salaryData.grossSalary > 0 && salaryData.country ? 'true' : 'false'}
+                </div>
+              )}
             </TabsContent>
 
-            <TabsContent value="analysis" className="space-y-6">
+            <TabsContent value="analysis" className="space-y-6 transition-opacity duration-200">
+              <h2 className="text-xl font-bold mb-2">Living Costs & Savings</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <LivingExpenses 
                   salaryData={salaryData}
-                  expenseData={expenseData}
+                  expenseData={memoizedExpenseData}
                   setExpenseData={setExpenseData}
                 />
                 <SavingsAnalysis 
                   salaryData={salaryData}
-                  taxData={taxData}
-                  expenseData={expenseData}
+                  taxData={memoizedTaxData}
+                  expenseData={memoizedExpenseData}
                 />
               </div>
               
@@ -1134,7 +1432,7 @@ const Index = () => {
                       <div className="flex gap-4 justify-center">
                         <Button 
                           onClick={handleSaveCalculation}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 min-h-[44px] touch-manipulation"
                           disabled={!hasCalculation}
                         >
                           <Save className="w-4 h-4" />
@@ -1155,7 +1453,7 @@ const Index = () => {
                       <div className="flex gap-4 justify-center">
                         <Button 
                           onClick={handleSaveCalculation}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 min-h-[44px] touch-manipulation"
                           disabled={user ? !hasCalculation : false}
                         >
                           <Save className="w-4 h-4" />
@@ -1194,14 +1492,11 @@ const Index = () => {
       {/* Save Calculation Modal */}
       <SaveCalculationModal
         isOpen={showSaveCalculationModal}
-        onClose={() => {
-          setShowSaveCalculationModal(false);
-          setExistingCalculation(null);
-        }}
+        onClose={() => setShowSaveCalculationModal(false)}
         onSave={saveCalculationAsNew}
-        existingCalculation={existingCalculation}
+        {...(() => { const converted = existingCalculation ? convertToExistingCalculation(existingCalculation) : undefined; return converted ? { existingCalculation: converted } : {}; })()}
         salaryData={salaryData}
-        taxData={taxData}
+        taxData={memoizedTaxData}
         expenseData={expenseData}
       />
 
@@ -1209,9 +1504,11 @@ const Index = () => {
       <LoadCalculationModal
         isOpen={showLoadCalculationModal}
         onClose={() => setShowLoadCalculationModal(false)}
-        onLoad={loadCalculation}
+        onLoad={(calculation) => loadCalculation(calculation as LoadCalculationModalSavedCalculation)}
         userId={user?.id || ''}
       />
+      {/* Add aria-live region for feedback */}
+      <div aria-live="polite" className="sr-only" id="feedback-region"></div>
     </div>
   );
 };

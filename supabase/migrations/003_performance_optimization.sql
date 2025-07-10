@@ -9,7 +9,7 @@
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON public.expenses(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_user_category ON public.expenses(user_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_user_amount ON public.expenses(user_id, amount DESC);
-CREATE INDEX IF NOT EXISTS idx_expenses_date_range ON public.expenses(date) WHERE date >= CURRENT_DATE - INTERVAL '1 year';
+-- Removed problematic index: CREATE INDEX IF NOT EXISTS idx_expenses_date_range ON public.expenses(date) WHERE date >= CURRENT_DATE - INTERVAL '1 year';
 
 -- Budgets table - optimize period and date range queries
 CREATE INDEX IF NOT EXISTS idx_budgets_user_period ON public.budgets(user_id, period);
@@ -36,9 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user_recent ON public.user_sessions
 CREATE INDEX IF NOT EXISTS idx_spending_alerts_active_only ON public.spending_alerts(user_id, category_id, threshold) 
 WHERE active = true;
 
--- Recent expenses (last 6 months)
+-- Recent expenses (last 6 months) - removed CURRENT_DATE dependency
 CREATE INDEX IF NOT EXISTS idx_expenses_recent ON public.expenses(user_id, amount, date) 
-WHERE date >= CURRENT_DATE - INTERVAL '6 months';
+WHERE date >= '2023-01-01'::date;
 
 -- Favorite user data only
 CREATE INDEX IF NOT EXISTS idx_user_data_favorites_only ON public.user_data(user_id, data_type, updated_at) 
@@ -272,29 +272,9 @@ $$;
 -- 8. PERFORMANCE MONITORING VIEWS
 -- ===========================================
 
--- View to identify slow queries
-CREATE OR REPLACE VIEW v_slow_queries AS
-SELECT 
-    query,
-    calls,
-    total_time,
-    mean_time,
-    rows
-FROM pg_stat_statements 
-WHERE mean_time > 100  -- Queries taking more than 100ms on average
-ORDER BY mean_time DESC;
-
--- View to monitor index usage
-CREATE OR REPLACE VIEW v_index_usage AS
-SELECT 
-    schemaname,
-    tablename,
-    indexname,
-    idx_scan,
-    idx_tup_read,
-    idx_tup_fetch
-FROM pg_stat_user_indexes 
-ORDER BY idx_scan DESC;
+-- Note: Performance monitoring views removed due to pg_stat_statements extension dependency
+-- These views require the pg_stat_statements extension to be enabled
+-- and may have different column names depending on PostgreSQL version
 
 -- ===========================================
 -- 9. PERFORMANCE OPTIMIZATION SUMMARY
@@ -308,7 +288,7 @@ ORDER BY idx_scan DESC;
 -- 5. ✅ Optimized functions with proper search paths
 -- 6. ✅ Automatic triggers for view maintenance
 -- 7. ✅ Pagination functions for large datasets
--- 8. ✅ Performance monitoring views
+-- 8. ⚠️ Performance monitoring views (removed - requires pg_stat_statements extension)
 
 -- Expected performance improvements:
 -- - 50-80% faster expense queries

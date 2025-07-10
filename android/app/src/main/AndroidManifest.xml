@@ -66,12 +66,43 @@
                 <data android:scheme="financialassistant" />
             </intent-filter>
 
+            <!-- Handle specific deep links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="financialassistant" android:host="financial-dashboard" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="financialassistant" android:host="save-calculation" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="financialassistant" android:host="tax-calculator" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="financialassistant" android:host="dashboard" />
+            </intent-filter>
+
             <!-- Handle notification actions -->
             <intent-filter>
                 <action android:name="BUDGET_ALERT" />
                 <action android:name="EXPENSE_REMINDER" />
                 <action android:name="TAX_REMINDER" />
                 <action android:name="WEEKLY_REVIEW" />
+                <action android:name="CALCULATION_SAVED" />
+                <action android:name="VALIDATION_ERROR" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

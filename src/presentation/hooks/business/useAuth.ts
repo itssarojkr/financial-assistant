@@ -19,7 +19,7 @@ export const useAuth = () => {
   // Check for existing session on mount
   useEffect(() => {
     checkSession();
-  }, []);
+  }, [checkSession]);
 
   /**
    * Checks if user has an active session

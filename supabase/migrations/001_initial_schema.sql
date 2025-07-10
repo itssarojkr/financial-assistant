@@ -149,85 +149,113 @@ ALTER TABLE public.spending_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_categories ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles
     FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
     FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Create RLS policies for user_sessions
+DROP POLICY IF EXISTS "Users can view own sessions" ON public.user_sessions;
 CREATE POLICY "Users can view own sessions" ON public.user_sessions
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own sessions" ON public.user_sessions;
 CREATE POLICY "Users can update own sessions" ON public.user_sessions
     FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own sessions" ON public.user_sessions;
 CREATE POLICY "Users can insert own sessions" ON public.user_sessions
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own sessions" ON public.user_sessions;
 CREATE POLICY "Users can delete own sessions" ON public.user_sessions
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for user_data
+DROP POLICY IF EXISTS "Users can view own data" ON public.user_data;
 CREATE POLICY "Users can view own data" ON public.user_data
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own data" ON public.user_data;
 CREATE POLICY "Users can update own data" ON public.user_data
     FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own data" ON public.user_data;
 CREATE POLICY "Users can insert own data" ON public.user_data
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own data" ON public.user_data;
 CREATE POLICY "Users can delete own data" ON public.user_data
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for expenses
+DROP POLICY IF EXISTS "Users can view own expenses" ON public.expenses;
 CREATE POLICY "Users can view own expenses" ON public.expenses
     FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own expenses" ON public.expenses;
 CREATE POLICY "Users can insert own expenses" ON public.expenses
     FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own expenses" ON public.expenses;
 CREATE POLICY "Users can update own expenses" ON public.expenses
     FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own expenses" ON public.expenses;
 CREATE POLICY "Users can delete own expenses" ON public.expenses
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for budgets
+DROP POLICY IF EXISTS "Users can view own budgets" ON public.budgets;
 CREATE POLICY "Users can view own budgets" ON public.budgets
     FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own budgets" ON public.budgets;
 CREATE POLICY "Users can insert own budgets" ON public.budgets
     FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own budgets" ON public.budgets;
 CREATE POLICY "Users can update own budgets" ON public.budgets
     FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own budgets" ON public.budgets;
 CREATE POLICY "Users can delete own budgets" ON public.budgets
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for user_preferences
+DROP POLICY IF EXISTS "Users can view own preferences" ON public.user_preferences;
 CREATE POLICY "Users can view own preferences" ON public.user_preferences
     FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own preferences" ON public.user_preferences;
 CREATE POLICY "Users can insert own preferences" ON public.user_preferences
     FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own preferences" ON public.user_preferences;
 CREATE POLICY "Users can update own preferences" ON public.user_preferences
     FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own preferences" ON public.user_preferences;
 CREATE POLICY "Users can delete own preferences" ON public.user_preferences
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Create RLS policies for spending_alerts
+DROP POLICY IF EXISTS "Users can view own alerts" ON public.spending_alerts;
 CREATE POLICY "Users can view own alerts" ON public.spending_alerts
     FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own alerts" ON public.spending_alerts;
 CREATE POLICY "Users can insert own alerts" ON public.spending_alerts
     FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own alerts" ON public.spending_alerts;
 CREATE POLICY "Users can update own alerts" ON public.spending_alerts
     FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own alerts" ON public.spending_alerts;
 CREATE POLICY "Users can delete own alerts" ON public.spending_alerts
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Reference table policies (public read access)
+DROP POLICY IF EXISTS "Allow public read access to expense categories" ON public.expense_categories;
 CREATE POLICY "Allow public read access to expense categories" ON public.expense_categories
     FOR SELECT TO public USING (true);
-
+DROP POLICY IF EXISTS "Allow authenticated users to read expense categories" ON public.expense_categories;
 CREATE POLICY "Allow authenticated users to read expense categories" ON public.expense_categories
     FOR SELECT TO authenticated USING (true);
 
@@ -281,18 +309,22 @@ END;
 $$;
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_sessions_updated_at ON public.user_sessions;
 CREATE TRIGGER update_user_sessions_updated_at
     BEFORE UPDATE ON public.user_sessions
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_data_updated_at ON public.user_data;
 CREATE TRIGGER update_user_data_updated_at
     BEFORE UPDATE ON public.user_data
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON public.user_preferences;
 CREATE TRIGGER update_user_preferences_updated_at
     BEFORE UPDATE ON public.user_preferences
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column(); 

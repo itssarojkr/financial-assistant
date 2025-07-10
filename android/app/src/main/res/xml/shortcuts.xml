@@ -29,6 +29,20 @@
             android:data="financialassistant://dashboard" />
     </shortcut>
 
+    <!-- Financial Dashboard -->
+    <shortcut
+        android:shortcutId="financial_dashboard"
+        android:enabled="true"
+        android:icon="@drawable/ic_financial_dashboard"
+        android:shortcutShortLabel="@string/shortcut_financial_dashboard"
+        android:shortcutLongLabel="@string/shortcut_financial_dashboard_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://financial-dashboard" />
+    </shortcut>
+
     <!-- Tax Calculator -->
     <shortcut
         android:shortcutId="tax_calculator"
@@ -55,6 +69,20 @@
             android:targetPackage="com.financialassistant.app"
             android:targetClass="com.financialassistant.app.MainActivity"
             android:data="financialassistant://budget-overview" />
+    </shortcut>
+
+    <!-- Save Calculation -->
+    <shortcut
+        android:shortcutId="save_calculation"
+        android:enabled="true"
+        android:icon="@drawable/ic_save_calculation"
+        android:shortcutShortLabel="Save Calculation"
+        android:shortcutLongLabel="Save your current tax calculation">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.financialassistant.app"
+            android:targetClass="com.financialassistant.app.MainActivity"
+            android:data="financialassistant://save-calculation" />
     </shortcut>
 
 </shortcuts> 

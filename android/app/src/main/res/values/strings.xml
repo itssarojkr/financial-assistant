@@ -14,30 +14,67 @@
     <string name="shortcut_tax_calculator_long">Calculate your taxes</string>
     <string name="shortcut_budget">Budget</string>
     <string name="shortcut_budget_long">View and manage budgets</string>
+    <string name="shortcut_financial_dashboard">Financial Dashboard</string>
+    <string name="shortcut_financial_dashboard_long">Access your financial dashboard</string>
+    
+    <!-- Save Calculation Validation -->
+    <string name="validation_incomplete_information">Incomplete Information</string>
+    <string name="validation_country_required">Country is required</string>
+    <string name="validation_state_required">State/Province is required</string>
+    <string name="validation_salary_required">Valid salary amount is required</string>
+    <string name="validation_currency_required">Currency is required</string>
+    <string name="validation_tax_calculation_incomplete">Tax calculation is not complete</string>
+    <string name="validation_takehome_calculation_incomplete">Take-home salary calculation is not complete</string>
+    <string name="validation_no_calculation_to_save">No calculation to save</string>
+    <string name="validation_complete_calculation_first">Please complete a tax calculation first</string>
+    
+    <!-- Navigation -->
+    <string name="navigation_home">Home</string>
+    <string name="navigation_financial_dashboard">Financial Dashboard</string>
+    <string name="navigation_tax_calculator">Tax Calculator</string>
+    <string name="navigation_user_dashboard">User Dashboard</string>
+    <string name="navigation_help">Help</string>
+    
+    <!-- Error Messages -->
+    <string name="error_null_reference">Data loading error</string>
+    <string name="error_tax_calculation_failed">Tax calculation failed</string>
+    <string name="error_save_calculation_failed">Failed to save calculation</string>
+    <string name="error_load_calculation_failed">Failed to load calculation</string>
+    <string name="error_authentication_required">Authentication required</string>
+    <string name="error_network_unavailable">Network connection is required for this feature</string>
+    <string name="error_camera_unavailable">Camera is not available on this device</string>
+    <string name="error_storage_unavailable">Storage is not available on this device</string>
+    
+    <!-- Success Messages -->
+    <string name="success_calculation_saved">Calculation saved successfully</string>
+    <string name="success_calculation_loaded">Calculation loaded successfully</string>
+    <string name="success_expense_added">Expense added successfully</string>
+    <string name="success_budget_updated">Budget updated successfully</string>
+    <string name="success_receipt_scanned">Receipt scanned successfully</string>
     
     <!-- Notification messages -->
     <string name="notification_budget_alert">Budget Alert</string>
     <string name="notification_expense_reminder">Log Your Expenses</string>
     <string name="notification_tax_reminder">Tax Reminder</string>
     <string name="notification_weekly_review">Weekly Budget Review</string>
+    <string name="notification_calculation_saved">Calculation Saved</string>
     
     <!-- Permission messages -->
     <string name="permission_camera_rationale">Camera access is needed to scan receipts</string>
     <string name="permission_notification_rationale">Notifications help you stay on track with your budget</string>
     <string name="permission_storage_rationale">Storage access is needed to save receipt images</string>
     
-    <!-- Error messages -->
-    <string name="error_network_unavailable">Network connection is required for this feature</string>
-    <string name="error_camera_unavailable">Camera is not available on this device</string>
-    <string name="error_storage_unavailable">Storage is not available on this device</string>
-    
-    <!-- Success messages -->
-    <string name="success_expense_added">Expense added successfully</string>
-    <string name="success_budget_updated">Budget updated successfully</string>
-    <string name="success_receipt_scanned">Receipt scanned successfully</string>
-    
     <!-- Loading messages -->
     <string name="loading_syncing">Syncing data...</string>
     <string name="loading_processing">Processing...</string>
     <string name="loading_scanning">Scanning receipt...</string>
+    <string name="loading_calculating">Calculating taxes...</string>
+    <string name="loading_saving">Saving calculation...</string>
+    <string name="loading_loading_calculation">Loading calculation...</string>
+    
+    <!-- UI Messages -->
+    <string name="ui_please_complete_details">Please complete all required details</string>
+    <string name="ui_optional_fields">City and locality are optional</string>
+    <string name="ui_required_fields">Country, state, salary, and currency are required</string>
+    <string name="ui_tax_calculation_required">Tax calculation must be completed</string>
 </resources>

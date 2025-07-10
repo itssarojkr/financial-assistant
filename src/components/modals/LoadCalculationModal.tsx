@@ -10,6 +10,14 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface TaxCalculationData {
   country: string;
+  countryCode?: string;
+  state?: string;
+  stateId?: string;
+  city?: string;
+  cityId?: string;
+  locality?: string;
+  localityId?: string;
+  isNative?: boolean;
   currency: string;
   salary: number;
   netSalary: number;
@@ -29,7 +37,7 @@ interface TaxCalculationData {
 interface SavedCalculation {
   id: string;
   data_name: string;
-  data_content: TaxCalculationData;
+  data_content: TaxCalculationData | Record<string, unknown>;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
@@ -66,7 +74,7 @@ export const LoadCalculationModal: React.FC<LoadCalculationModalProps> = ({
           variant: "destructive",
         });
       } else {
-        setSavedCalculations(data || []);
+        setSavedCalculations((data || []) as SavedCalculation[]);
       }
     } catch (error) {
       console.error('Error loading saved calculations:', error);
@@ -128,7 +136,7 @@ export const LoadCalculationModal: React.FC<LoadCalculationModalProps> = ({
             ) : (
               <div className="space-y-4">
                 {savedCalculations.map((calculation) => {
-                  const data = calculation.data_content;
+                  const data = calculation.data_content as TaxCalculationData;
                   return (
                     <Card 
                       key={calculation.id} 

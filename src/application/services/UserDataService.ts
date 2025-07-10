@@ -10,6 +10,7 @@ export interface ExpenseItem {
   description?: string;
   location?: string;
   source?: string;
+  calculation_id?: string;
   created_at?: string;
 }
 
@@ -21,6 +22,8 @@ export interface BudgetItem {
   period: string;
   start_date?: string;
   end_date?: string;
+  currency?: string;
+  calculation_id?: string;
   created_at?: string;
 }
 
@@ -31,11 +34,23 @@ export interface AlertItem {
   threshold: number;
   period: string;
   active: boolean;
+  type?: string;
+  severity?: string;
+  currency?: string;
+  calculation_id?: string;
   created_at?: string;
 }
 
 export interface TaxCalculationData {
   country: string;
+  countryCode?: string;
+  state?: string;
+  stateId?: string;
+  city?: string;
+  cityId?: string;
+  locality?: string;
+  localityId?: string;
+  isNative?: boolean;
   salary: number;
   currency: string;
   taxAmount: number;
@@ -339,15 +354,15 @@ export class UserDataService {
     const { data, error } = await supabase
       .from('user_data')
       .insert(
-        dataObj.userData.map((item: SavedData) => {
-          const obj: Record<string, unknown> = {
-            ...item,
-            data_content: item.data_content as Json,
-            user_id: userId,
-          };
-          if (item.id) obj.id = item.id;
-          return obj;
-        })
+        dataObj.userData.map((item: SavedData) => ({
+          user_id: userId,
+          data_type: item.data_type,
+          data_name: item.data_name,
+          data_content: item.data_content as Json,
+          is_favorite: item.is_favorite,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        }))
       )
       .select();
 
@@ -478,11 +493,19 @@ export class UserDataService {
   static async getCalculationExpenses(calculationId: string) {
     const { data, error } = await supabase
       .from('expenses')
-      .select('*')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
       .eq('calculation_id', calculationId)
       .order('date', { ascending: false });
 
-    return { data: data as ExpenseItem[], error };
+    return { data, error };
   }
 
   /**
@@ -491,11 +514,19 @@ export class UserDataService {
   static async getCalculationBudgets(calculationId: string) {
     const { data, error } = await supabase
       .from('budgets')
-      .select('*')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
       .eq('calculation_id', calculationId)
       .order('created_at', { ascending: false });
 
-    return { data: data as BudgetItem[], error };
+    return { data, error };
   }
 
   /**
@@ -504,10 +535,245 @@ export class UserDataService {
   static async getCalculationAlerts(calculationId: string) {
     const { data, error } = await supabase
       .from('spending_alerts')
-      .select('*')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
       .eq('calculation_id', calculationId)
       .order('created_at', { ascending: false });
 
-    return { data: data as AlertItem[], error };
+    return { data, error };
+  }
+
+  // ===========================================
+  // NEW METHODS FOR PROPER DATABASE TABLES
+  // ===========================================
+
+  /**
+   * Get all expenses for a user from the expenses table
+   */
+  static async getUserExpenses(userId: string) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+
+    return { data, error };
+  }
+
+
+
+  /**
+   * Add a new expense to the expenses table
+   */
+  static async addExpense(expense: Omit<ExpenseItem, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert({
+        user_id: expense.user_id,
+        category_id: expense.category_id,
+        amount: expense.amount,
+        currency: expense.currency,
+        date: expense.date,
+        description: expense.description || null,
+        location: expense.location || null,
+        source: expense.source || null,
+        calculation_id: expense.calculation_id || null,
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Update an existing expense
+   */
+  static async updateExpense(expenseId: string, updates: Partial<ExpenseItem>) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .update(updates)
+      .eq('id', expenseId)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Delete an expense
+   */
+  static async deleteExpense(expenseId: string) {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', expenseId);
+
+    return { error };
+  }
+
+  /**
+   * Get all budgets for a user from the budgets table
+   */
+  static async getUserBudgets(userId: string) {
+    const { data, error } = await supabase
+      .from('budgets')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  }
+
+  /**
+   * Add a new budget to the budgets table
+   */
+  static async addBudget(budget: Omit<BudgetItem, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('budgets')
+      .insert({
+        user_id: budget.user_id,
+        category_id: budget.category_id,
+        amount: budget.amount,
+        period: budget.period,
+        start_date: budget.start_date || null,
+        end_date: budget.end_date || null,
+        currency: budget.currency || null,
+        calculation_id: budget.calculation_id || null,
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Update an existing budget
+   */
+  static async updateBudget(budgetId: string, updates: Partial<BudgetItem>) {
+    const { data, error } = await supabase
+      .from('budgets')
+      .update(updates)
+      .eq('id', budgetId)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Delete a budget
+   */
+  static async deleteBudget(budgetId: string) {
+    const { error } = await supabase
+      .from('budgets')
+      .delete()
+      .eq('id', budgetId);
+
+    return { error };
+  }
+
+  /**
+   * Get all alerts for a user from the spending_alerts table
+   */
+  static async getUserAlerts(userId: string) {
+    const { data, error } = await supabase
+      .from('spending_alerts')
+      .select(`
+        *,
+        expense_categories (
+          id,
+          name,
+          icon,
+          color
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  }
+
+  /**
+   * Add a new alert to the spending_alerts table
+   */
+  static async addAlert(alert: Omit<AlertItem, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('spending_alerts')
+      .insert({
+        user_id: alert.user_id,
+        category_id: alert.category_id,
+        threshold: alert.threshold,
+        period: alert.period,
+        active: alert.active,
+        type: alert.type || 'amount',
+        severity: alert.severity || 'medium',
+        currency: alert.currency || null,
+        calculation_id: alert.calculation_id || null,
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Update an existing alert
+   */
+  static async updateAlert(alertId: string, updates: Partial<AlertItem>) {
+    const { data, error } = await supabase
+      .from('spending_alerts')
+      .update(updates)
+      .eq('id', alertId)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * Delete an alert
+   */
+  static async deleteAlert(alertId: string) {
+    const { error } = await supabase
+      .from('spending_alerts')
+      .delete()
+      .eq('id', alertId);
+
+    return { error };
+  }
+
+  /**
+   * Get all expense categories
+   */
+  static async getExpenseCategories() {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('*')
+      .order('name');
+
+    return { data, error };
   }
 } 

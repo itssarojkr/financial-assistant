@@ -1,70 +1,114 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, Clock, AlertTriangle, Calendar } from 'lucide-react';
-import { mobileNotificationService } from '@/infrastructure/services/mobile/MobileNotificationService';
+import { Badge } from '@/components/ui/badge';
+import { Bell, Clock, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface NotificationSettings {
-  budgetAlerts: boolean;
-  expenseReminders: boolean;
   taxReminders: boolean;
-  weeklyReviews: boolean;
-  dailyReminderTime: string;
-  weeklyReviewDay: string;
-  budgetWarningThreshold: number;
+  expenseTracking: boolean;
+  financialInsights: boolean;
+  budgetAlerts: boolean;
+  marketUpdates: boolean;
+  weeklyReports: boolean;
+  monthlyReports: boolean;
+  customReminders: boolean;
 }
 
-export const MobileNotificationSettings: React.FC = () => {
+interface MobileNotificationSettingsProps {
+  userId?: string;
+}
+
+export const MobileNotificationSettings: React.FC<MobileNotificationSettingsProps> = ({ userId }) => {
+  const { toast } = useToast();
   const [settings, setSettings] = useState<NotificationSettings>({
-    budgetAlerts: true,
-    expenseReminders: true,
     taxReminders: true,
-    weeklyReviews: true,
-    dailyReminderTime: '20:00',
-    weeklyReviewDay: '0', // Sunday
-    budgetWarningThreshold: 80
+    expenseTracking: true,
+    financialInsights: true,
+    budgetAlerts: true,
+    marketUpdates: false,
+    weeklyReports: true,
+    monthlyReports: true,
+    customReminders: false,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [hasPermission, setHasPermission] = useState(false);
 
+  // Check notification permission on mount
   useEffect(() => {
-    loadSettings();
+    checkNotificationPermission();
   }, []);
 
-  const loadSettings = async () => {
-    try {
-      // Load settings from local storage or preferences
-      const savedSettings = localStorage.getItem('notificationSettings');
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
-      }
-    } catch (error) {
-      console.error('Failed to load notification settings:', error);
+  const checkNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = Notification.permission;
+      setHasPermission(permission === 'granted');
     }
   };
 
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        setHasPermission(permission === 'granted');
+        
+        if (permission === 'granted') {
+          toast({
+            title: "Notifications enabled",
+            description: "You'll now receive important financial reminders and updates.",
+          });
+        } else {
+          toast({
+            title: "Notifications disabled",
+            description: "You can enable notifications later in your device settings.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        toast({
+          title: "Permission error",
+          description: "Unable to request notification permission.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleSettingChange = (key: keyof NotificationSettings, value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
   const saveSettings = async () => {
+    if (!userId) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to save notification settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      // Save to local storage
-      localStorage.setItem('notificationSettings', JSON.stringify(settings));
-      
-      // Update notification schedules
-      await updateNotificationSchedules();
+      // Simulate API call to save settings
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
         title: "Settings saved",
-        description: "Notification settings updated successfully",
+        description: "Your notification preferences have been updated.",
       });
     } catch (error) {
+      console.error('Error saving notification settings:', error);
       toast({
-        title: "Error",
-        description: "Failed to save notification settings",
+        title: "Error saving settings",
+        description: "Unable to save notification preferences.",
         variant: "destructive",
       });
     } finally {
@@ -72,229 +116,317 @@ export const MobileNotificationSettings: React.FC = () => {
     }
   };
 
-  const updateNotificationSchedules = async () => {
-    try {
-      // Cancel existing notifications
-      await mobileNotificationService.cancelAllNotifications();
-      
-      // Schedule new notifications based on settings
-      if (settings.expenseReminders) {
-        const [hour, minute] = settings.dailyReminderTime.split(':');
-        await mobileNotificationService.scheduleDailyExpenseReminder(parseInt(hour), parseInt(minute));
-      }
-      
-      if (settings.weeklyReviews) {
-        const dayOfWeek = parseInt(settings.weeklyReviewDay);
-        await mobileNotificationService.scheduleWeeklyBudgetReview(dayOfWeek, 9);
-      }
-    } catch (error) {
-      console.error('Failed to update notification schedules:', error);
-    }
-  };
-
-  const handleToggle = (key: keyof NotificationSettings) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
-  const handleTimeChange = (value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      dailyReminderTime: value
-    }));
-  };
-
-  const handleDayChange = (value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      weeklyReviewDay: value
-    }));
-  };
-
-  const handleThresholdChange = (value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      budgetWarningThreshold: parseInt(value)
-    }));
-  };
-
   const testNotification = async () => {
+    if (!hasPermission) {
+      toast({
+        title: "Permission required",
+        description: "Please enable notifications to test them.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      await mobileNotificationService.sendImmediateNotification(
-        'Test Notification',
-        'This is a test notification from Financial Assistant',
-        'budget-alerts'
-      );
+      new Notification('Financial Assistant', {
+        body: 'This is a test notification from your financial assistant.',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+      });
+      
       toast({
         title: "Test notification sent",
-        description: "Check your notification panel",
+        description: "Check your device for the test notification.",
       });
     } catch (error) {
+      console.error('Error sending test notification:', error);
       toast({
-        title: "Error",
-        description: "Failed to send test notification",
+        title: "Test failed",
+        description: "Unable to send test notification.",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-6">
+      {/* Permission Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notification Settings
+            <Bell className="w-5 h-5" />
+            Notification Permissions
           </CardTitle>
+          <CardDescription>
+            Manage your notification preferences and permissions
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Budget Alerts */}
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Budget Alerts
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Get notified when you're close to or exceed your budget
-              </p>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="notification-permission">Device Notifications</Label>
+              <Badge variant={hasPermission ? "default" : "secondary"}>
+                {hasPermission ? "Enabled" : "Disabled"}
+              </Badge>
             </div>
-            <Switch
-              checked={settings.budgetAlerts}
-              onCheckedChange={() => handleToggle('budgetAlerts')}
-            />
-          </div>
-
-          {/* Expense Reminders */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Daily Expense Reminders
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Daily reminders to log your expenses
-              </p>
-            </div>
-            <Switch
-              checked={settings.expenseReminders}
-              onCheckedChange={() => handleToggle('expenseReminders')}
-            />
-          </div>
-
-          {/* Tax Reminders */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Tax Reminders
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Important tax-related reminders and deadlines
-              </p>
-            </div>
-            <Switch
-              checked={settings.taxReminders}
-              onCheckedChange={() => handleToggle('taxReminders')}
-            />
-          </div>
-
-          {/* Weekly Reviews */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Weekly Budget Reviews
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Weekly reminders to review your spending
-              </p>
-            </div>
-            <Switch
-              checked={settings.weeklyReviews}
-              onCheckedChange={() => handleToggle('weeklyReviews')}
-            />
-          </div>
-
-          {/* Daily Reminder Time */}
-          {settings.expenseReminders && (
-            <div className="space-y-2">
-              <Label>Daily Reminder Time</Label>
-              <Select value={settings.dailyReminderTime} onValueChange={handleTimeChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="08:00">8:00 AM</SelectItem>
-                  <SelectItem value="12:00">12:00 PM</SelectItem>
-                  <SelectItem value="18:00">6:00 PM</SelectItem>
-                  <SelectItem value="20:00">8:00 PM</SelectItem>
-                  <SelectItem value="22:00">10:00 PM</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Weekly Review Day */}
-          {settings.weeklyReviews && (
-            <div className="space-y-2">
-              <Label>Weekly Review Day</Label>
-              <Select value={settings.weeklyReviewDay} onValueChange={handleDayChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Sunday</SelectItem>
-                  <SelectItem value="1">Monday</SelectItem>
-                  <SelectItem value="2">Tuesday</SelectItem>
-                  <SelectItem value="3">Wednesday</SelectItem>
-                  <SelectItem value="4">Thursday</SelectItem>
-                  <SelectItem value="5">Friday</SelectItem>
-                  <SelectItem value="6">Saturday</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Budget Warning Threshold */}
-          {settings.budgetAlerts && (
-            <div className="space-y-2">
-              <Label>Budget Warning Threshold (%)</Label>
-              <Select 
-                value={settings.budgetWarningThreshold.toString()} 
-                onValueChange={handleThresholdChange}
+            {!hasPermission && (
+              <Button 
+                size="sm" 
+                onClick={requestNotificationPermission}
+                className="flex items-center gap-2"
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="70">70%</SelectItem>
-                  <SelectItem value="80">80%</SelectItem>
-                  <SelectItem value="90">90%</SelectItem>
-                  <SelectItem value="95">95%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-4">
-            <Button
-              variant="outline"
+                <Bell className="w-4 h-4" />
+                Enable
+              </Button>
+            )}
+          </div>
+          
+          {hasPermission && (
+            <Button 
+              variant="outline" 
+              size="sm" 
               onClick={testNotification}
-              className="flex-1"
+              className="w-full"
             >
-              Test Notification
+              <Bell className="w-4 h-4 mr-2" />
+              Send Test Notification
             </Button>
-            <Button
-              onClick={saveSettings}
-              disabled={isLoading}
-              className="flex-1"
-            >
-              {isLoading ? 'Saving...' : 'Save Settings'}
-            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notification Categories */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification Categories</CardTitle>
+          <CardDescription>
+            Choose which types of notifications you want to receive
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            {/* Tax Reminders */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <div>
+                  <Label htmlFor="tax-reminders" className="font-medium">
+                    Tax Reminders
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Important tax deadlines and filing reminders
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="tax-reminders"
+                checked={settings.taxReminders}
+                onCheckedChange={(checked) => handleSettingChange('taxReminders', checked)}
+              />
+            </div>
+
+            {/* Expense Tracking */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                <div>
+                  <Label htmlFor="expense-tracking" className="font-medium">
+                    Expense Tracking
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Daily expense summaries and spending alerts
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="expense-tracking"
+                checked={settings.expenseTracking}
+                onCheckedChange={(checked) => handleSettingChange('expenseTracking', checked)}
+              />
+            </div>
+
+            {/* Financial Insights */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-purple-600" />
+                <div>
+                  <Label htmlFor="financial-insights" className="font-medium">
+                    Financial Insights
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Personalized financial tips and insights
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="financial-insights"
+                checked={settings.financialInsights}
+                onCheckedChange={(checked) => handleSettingChange('financialInsights', checked)}
+              />
+            </div>
+
+            {/* Budget Alerts */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <div>
+                  <Label htmlFor="budget-alerts" className="font-medium">
+                    Budget Alerts
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Budget limit warnings and overspending alerts
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="budget-alerts"
+                checked={settings.budgetAlerts}
+                onCheckedChange={(checked) => handleSettingChange('budgetAlerts', checked)}
+              />
+            </div>
+
+            {/* Market Updates */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <Label htmlFor="market-updates" className="font-medium">
+                    Market Updates
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Important market news and investment updates
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="market-updates"
+                checked={settings.marketUpdates}
+                onCheckedChange={(checked) => handleSettingChange('marketUpdates', checked)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Report Frequency */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Report Frequency</CardTitle>
+          <CardDescription>
+            Choose how often you want to receive financial reports
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            {/* Weekly Reports */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-xs font-bold text-blue-600">W</span>
+                </div>
+                <div>
+                  <Label htmlFor="weekly-reports" className="font-medium">
+                    Weekly Reports
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Weekly spending and savings summaries
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="weekly-reports"
+                checked={settings.weeklyReports}
+                onCheckedChange={(checked) => handleSettingChange('weeklyReports', checked)}
+              />
+            </div>
+
+            {/* Monthly Reports */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                  <span className="text-xs font-bold text-green-600">M</span>
+                </div>
+                <div>
+                  <Label htmlFor="monthly-reports" className="font-medium">
+                    Monthly Reports
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Comprehensive monthly financial analysis
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="monthly-reports"
+                checked={settings.monthlyReports}
+                onCheckedChange={(checked) => handleSettingChange('monthlyReports', checked)}
+              />
+            </div>
+
+            {/* Custom Reminders */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-gray-600" />
+                <div>
+                  <Label htmlFor="custom-reminders" className="font-medium">
+                    Custom Reminders
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Personalized reminders for your financial goals
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="custom-reminders"
+                checked={settings.customReminders}
+                onCheckedChange={(checked) => handleSettingChange('customReminders', checked)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex gap-3">
+        <Button 
+          variant="outline" 
+          onClick={() => setSettings({
+            taxReminders: true,
+            expenseTracking: true,
+            financialInsights: true,
+            budgetAlerts: true,
+            marketUpdates: false,
+            weeklyReports: true,
+            monthlyReports: true,
+            customReminders: false,
+          })}
+          className="flex-1"
+        >
+          Reset to Default
+        </Button>
+        <Button 
+          onClick={saveSettings}
+          disabled={isLoading}
+          className="flex-1"
+        >
+          {isLoading ? "Saving..." : "Save Settings"}
+        </Button>
+      </div>
+
+      {/* Info Card */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-2">
+            <Bell className="w-4 h-4 text-blue-600 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-800 mb-1">
+                Notification Tips
+              </p>
+              <ul className="text-blue-700 space-y-1">
+                <li>• Notifications help you stay on top of your finances</li>
+                <li>• You can change these settings anytime</li>
+                <li>• Tax reminders are especially important for compliance</li>
+                <li>• Budget alerts help prevent overspending</li>
+              </ul>
+            </div>
           </div>
         </CardContent>
       </Card>

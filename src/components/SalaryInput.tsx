@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { validateSalaryInput, sanitizeStringInput } from '@/lib/security-utils';
 import { useAsyncError } from '@/hooks/use-error-boundary';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 import { convertCurrency } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const SUPPORTED_CURRENCIES = [
   { code: 'USD', label: 'USD - US Dollar', symbol: '$' },
@@ -56,6 +57,9 @@ export const SalaryInput: React.FC<SalaryInputProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const { handleAsyncError } = useAsyncError();
 
+  // Add success state when validation passes
+  const [isValid, setIsValid] = useState<boolean | null>(null);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const sanitizedValue = sanitizeStringInput(rawValue, 1000); // Limit salary input length
@@ -82,9 +86,12 @@ export const SalaryInput: React.FC<SalaryInputProps> = ({
     }
 
     const validation = validateSalaryInput(numericValue);
-    if (!validation.isValid) {
+    if (validation.isValid) {
+      setIsValid(true);
+      setValidationError(null);
+    } else {
+      setIsValid(false);
       setValidationError(validation.error || 'Invalid salary amount');
-      return;
     }
 
     try {
@@ -164,6 +171,14 @@ export const SalaryInput: React.FC<SalaryInputProps> = ({
       <div className="space-y-2">
         <Label htmlFor="salary-input" className="text-sm font-medium">
           Annual Gross Salary
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="ml-1 cursor-help text-muted-foreground">?</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Enter your annual gross salary before any deductions or taxes.</p>
+            </TooltipContent>
+          </Tooltip>
         </Label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg text-muted-foreground select-none pointer-events-none">
@@ -172,15 +187,28 @@ export const SalaryInput: React.FC<SalaryInputProps> = ({
           <Input
             id="salary-input"
             type="text"
-            value={localValue}
-            onChange={handleInputChange}
+            value={salaryData.grossSalary === 0 ? '' : salaryData.grossSalary}
+            onChange={e => {
+              const value = parseFloat(e.target.value) || 0;
+              setSalaryData({ ...salaryData, grossSalary: value });
+            }}
             onBlur={handleBlur}
             onFocus={handleFocus}
-            placeholder={`Enter your annual salary`}
+            placeholder="Enter your annual salary"
             disabled={disabled}
-            className={`pl-8 ${validationError ? 'border-red-500 focus:border-red-500' : ''}`}
+            className={`pl-8 max-w-md ${
+              isValid === true ? 'border-green-500 focus:border-green-500' : 
+              isValid === false ? 'border-red-500 focus:border-red-500' : 
+              'border-gray-300'
+            }`}
             aria-describedby={validationError ? 'salary-error' : undefined}
           />
+          {isValid === true && (
+            <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+          )}
+          {isValid === false && (
+            <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+          )}
         </div>
         {validationError && (
           <Alert variant="destructive" id="salary-error">
@@ -192,13 +220,21 @@ export const SalaryInput: React.FC<SalaryInputProps> = ({
       <div className="space-y-2">
         <Label htmlFor="currency-select" className="text-sm font-medium">
           Currency
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="ml-1 cursor-help text-muted-foreground">?</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Select the currency for your salary. This affects tax calculations.</p>
+            </TooltipContent>
+          </Tooltip>
         </Label>
         <Select
           value={salaryData.currency}
           onValueChange={handleCurrencyChange}
           disabled={disabled}
         >
-          <SelectTrigger id="currency-select" className="w-full">
+          <SelectTrigger id="currency-select" className="w-full max-w-md">
             <SelectValue placeholder="Select currency" />
           </SelectTrigger>
           <SelectContent>

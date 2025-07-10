@@ -27,6 +27,34 @@ const config: CapacitorConfig = {
       iconColor: "#3B82F6",
       sound: "default",
       vibrate: true
+    },
+    App: {
+      url: 'financialassistant://',
+      appLinks: {
+        ios: {
+          appId: 'com.financialassistant.app',
+          appName: 'Financial Assistant'
+        },
+        android: {
+          packageName: 'com.financialassistant.app',
+          scheme: 'financialassistant'
+        }
+      }
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
+      resizeOnFullScreen: true
+    },
+    Haptics: {
+      enabled: true
+    }
+  },
+  android: {
+    buildOptions: {
+      keystorePath: undefined,
+      keystoreAlias: undefined,
+      keystorePassword: undefined
     }
   }
 };

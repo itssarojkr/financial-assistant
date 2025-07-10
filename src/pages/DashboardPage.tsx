@@ -15,29 +15,31 @@ const DashboardPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <Card className="w-full max-w-md mx-auto">
-            <CardHeader>
-              <CardTitle className="text-center">Financial Dashboard</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Sign in to access Financial Dashboard</h3>
-                <p className="text-gray-600 mb-4">
-                  Track your expenses, manage budgets, and get insights into your spending patterns.
-                </p>
-                <div className="flex gap-4 justify-center">
-                  <Button onClick={() => navigate('/login')}>
-                    Sign In
-                  </Button>
-                  <Button variant="outline" onClick={() => navigate('/tax-calculator')}>
-                    Try Calculator
-                  </Button>
+        <div className="p-4">
+          <div className="max-w-6xl mx-auto">
+            <Card className="w-full max-w-md mx-auto">
+              <CardHeader>
+                <CardTitle className="text-center">Financial Dashboard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Sign in to access Financial Dashboard</h3>
+                  <p className="text-gray-600 mb-4">
+                    Track your expenses, manage budgets, and get insights into your spending patterns.
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    <Button onClick={() => navigate('/login')}>
+                      Sign In
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate('/tax-calculator')}>
+                      Try Calculator
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -46,14 +48,16 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Financial Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Track your expenses, manage budgets, and get insights into your spending patterns.
-          </p>
+      <div className="p-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Financial Dashboard</h1>
+            <p className="text-gray-600 mt-2">
+              Track your expenses, manage budgets, and get insights into your spending patterns.
+            </p>
+          </div>
+          <FinancialDashboard userId={user.id} />
         </div>
-        <FinancialDashboard userId={user.id} />
       </div>
     </div>
   );

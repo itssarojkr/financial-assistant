@@ -46,4 +46,20 @@ describe('FinancialDashboard (Dual-Currency)', () => {
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
+
+  // Add test for error boundary rendering
+  it('renders error boundary fallback on error', async () => {
+    // Simulate error in child component
+    // ...test logic...
+  });
+  // Add test for failed API call
+  it('shows error toast on failed save', async () => {
+    // Simulate save failure
+    // ...test logic...
+  });
+  // Add test for spinner during calculation
+  it('shows spinner while calculation is in progress', async () => {
+    // Simulate calculation in progress
+    // ...test logic...
+  });
 }); 

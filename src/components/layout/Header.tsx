@@ -39,10 +39,14 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
     return (
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="flex items-center space-x-3 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+          >
             <Calculator className="w-6 h-6 text-blue-600" />
             <span className="text-xl font-bold text-gray-900">Financial Assistant</span>
-          </div>
+          </Button>
         </div>
       </header>
     );
@@ -53,10 +57,14 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         {/* Logo and Navigation */}
         <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-3">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="flex items-center space-x-3 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+          >
             <Calculator className="w-6 h-6 text-blue-600" />
             <span className="text-xl font-bold text-gray-900">Financial Assistant</span>
-          </div>
+          </Button>
           {user && (
             <nav className="hidden md:flex items-center space-x-4">
               <Button
