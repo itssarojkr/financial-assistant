@@ -7,40 +7,61 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       budgets: {
         Row: {
           amount: number
+          calculation_id: string | null
           category_id: number | null
           created_at: string | null
+          currency: string | null
           end_date: string | null
           id: string
           period: string
           start_date: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           amount: number
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
+          currency?: string | null
           end_date?: string | null
           id?: string
           period: string
           start_date?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           amount?: number
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
+          currency?: string | null
           end_date?: string | null
           id?: string
           period?: string
           start_date?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "budgets_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "user_data"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "budgets_category_id_fkey"
             columns: ["category_id"]
@@ -52,21 +73,49 @@ export type Database = {
       }
       cities: {
         Row: {
+          area_km2: number | null
+          created_at: string | null
           id: number
+          latitude: number | null
+          longitude: number | null
           name: string
+          population: number | null
           state_id: number
+          timezone: string | null
+          updated_at: string | null
         }
         Insert: {
+          area_km2?: number | null
+          created_at?: string | null
           id?: number
+          latitude?: number | null
+          longitude?: number | null
           name: string
+          population?: number | null
           state_id: number
+          timezone?: string | null
+          updated_at?: string | null
         }
         Update: {
+          area_km2?: number | null
+          created_at?: string | null
           id?: number
+          latitude?: number | null
+          longitude?: number | null
           name?: string
+          population?: number | null
           state_id?: number
+          timezone?: string | null
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cities_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "location_hierarchy"
+            referencedColumns: ["state_id"]
+          },
           {
             foreignKeyName: "cities_state_id_fkey"
             columns: ["state_id"]
@@ -79,24 +128,36 @@ export type Database = {
       countries: {
         Row: {
           code: string
+          created_at: string | null
           currency: string
+          gdp_per_capita: number | null
           id: number
           name: string
+          population: number | null
           region: string
+          updated_at: string | null
         }
         Insert: {
           code: string
+          created_at?: string | null
           currency: string
+          gdp_per_capita?: number | null
           id?: number
           name: string
+          population?: number | null
           region: string
+          updated_at?: string | null
         }
         Update: {
           code?: string
+          created_at?: string | null
           currency?: string
+          gdp_per_capita?: number | null
           id?: number
           name?: string
+          population?: number | null
           region?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -127,6 +188,7 @@ export type Database = {
       expenses: {
         Row: {
           amount: number
+          calculation_id: string | null
           category_id: number | null
           created_at: string | null
           currency: string
@@ -139,6 +201,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
           currency: string
@@ -151,6 +214,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
           currency?: string
@@ -163,6 +227,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "expenses_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "user_data"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "expenses_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -173,19 +244,31 @@ export type Database = {
       }
       localities: {
         Row: {
+          area_km2: number | null
           city_id: number
+          created_at: string | null
           id: number
           name: string
+          population: number | null
+          updated_at: string | null
         }
         Insert: {
+          area_km2?: number | null
           city_id: number
+          created_at?: string | null
           id?: number
           name: string
+          population?: number | null
+          updated_at?: string | null
         }
         Update: {
+          area_km2?: number | null
           city_id?: number
+          created_at?: string | null
           id?: number
           name?: string
+          population?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -194,6 +277,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cities"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "localities_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "location_hierarchy"
+            referencedColumns: ["city_id"]
           },
         ]
       }
@@ -230,32 +320,54 @@ export type Database = {
       spending_alerts: {
         Row: {
           active: boolean | null
+          calculation_id: string | null
           category_id: number | null
           created_at: string | null
+          currency: string | null
           id: string
           period: string
+          severity: string | null
           threshold: number
+          type: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           active?: boolean | null
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
+          currency?: string | null
           id?: string
           period: string
+          severity?: string | null
           threshold: number
+          type?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           active?: boolean | null
+          calculation_id?: string | null
           category_id?: number | null
           created_at?: string | null
+          currency?: string | null
           id?: string
           period?: string
+          severity?: string | null
           threshold?: number
+          type?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "spending_alerts_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "user_data"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "spending_alerts_category_id_fkey"
             columns: ["category_id"]
@@ -267,19 +379,37 @@ export type Database = {
       }
       states: {
         Row: {
+          area_km2: number | null
+          capital: string | null
+          code: string | null
           country_id: number
+          created_at: string | null
           id: number
           name: string
+          population: number | null
+          updated_at: string | null
         }
         Insert: {
+          area_km2?: number | null
+          capital?: string | null
+          code?: string | null
           country_id: number
+          created_at?: string | null
           id?: number
           name: string
+          population?: number | null
+          updated_at?: string | null
         }
         Update: {
+          area_km2?: number | null
+          capital?: string | null
+          code?: string | null
           country_id?: number
+          created_at?: string | null
           id?: number
           name?: string
+          population?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -288,6 +418,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "states_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "location_hierarchy"
+            referencedColumns: ["country_id"]
           },
         ]
       }
@@ -383,10 +520,138 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      location_hierarchy: {
+        Row: {
+          city_id: number | null
+          city_name: string | null
+          city_population: number | null
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          currency: string | null
+          latitude: number | null
+          longitude: number | null
+          region: string | null
+          state_capital: string | null
+          state_code: string | null
+          state_id: number | null
+          state_name: string | null
+          timezone: string | null
+        }
+        Relationships: []
+      }
+      mv_budget_vs_actual: {
+        Row: {
+          actual_amount: number | null
+          budget_amount: number | null
+          category_id: number | null
+          difference: number | null
+          period: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_monthly_expense_summary: {
+        Row: {
+          avg_amount: number | null
+          category_id: number | null
+          month: string | null
+          total_amount: number | null
+          transaction_count: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_calculation_currency: {
+        Args: { calc_id: string }
+        Returns: string
+      }
+      get_locations_by_country: {
+        Args: { country_code: string }
+        Returns: {
+          country_name: string
+          state_name: string
+          city_name: string
+          city_population: number
+        }[]
+      }
+      get_user_expenses_paginated: {
+        Args: {
+          p_user_id: string
+          p_limit?: number
+          p_offset?: number
+          p_category_id?: number
+          p_start_date?: string
+          p_end_date?: string
+        }
+        Returns: {
+          id: string
+          category_id: number
+          category_name: string
+          amount: number
+          currency: string
+          date: string
+          description: string
+          total_count: number
+        }[]
+      }
+      get_user_monthly_expenses: {
+        Args: { p_user_id: string; p_year?: number; p_month?: number }
+        Returns: {
+          category_id: number
+          category_name: string
+          total_amount: number
+          transaction_count: number
+          avg_amount: number
+        }[]
+      }
+      get_user_spending_alerts: {
+        Args: { p_user_id: string }
+        Returns: {
+          alert_id: string
+          category_id: number
+          category_name: string
+          threshold: number
+          period: string
+          active: boolean
+          current_spending: number
+        }[]
+      }
+      refresh_analytics_views: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      search_locations: {
+        Args: { search_term: string }
+        Returns: {
+          country_name: string
+          state_name: string
+          city_name: string
+          match_type: string
+        }[]
+      }
+      validate_calculation_ownership: {
+        Args: { calc_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
@@ -397,21 +662,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -429,14 +698,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -452,14 +723,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -475,14 +748,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -490,14 +765,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

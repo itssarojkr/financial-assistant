@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LoadingSpinner } from '@/presentation/components/LoadingSpinner';
@@ -13,7 +13,6 @@ const Help = lazy(() => import('@/pages/Help').then(m => ({ default: m.default }
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.default })));
 
 // Components
-import { useMobile } from '@/presentation/hooks/ui/useMobile';
 
 // Styles
 import '@/index.css';
@@ -25,7 +24,6 @@ import '@/index.css';
  * routing, context providers, and the overall application structure.
  */
 const App: React.FC = () => {
-  const { isMobile } = useMobile();
 
   return (
     <TooltipProvider>

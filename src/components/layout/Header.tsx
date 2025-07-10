@@ -7,6 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { UserDashboard } from '@/components/dashboard/UserDashboard';
+import { MobileNavigation } from '@/components/ui/mobile-navigation';
+import { DarkModeToggle } from '@/components/ui/dark-mode-toggle';
 import { Calculator, User, LogOut, Settings, BarChart3, Save, HelpCircle } from 'lucide-react';
 
 interface HeaderProps {
@@ -105,17 +107,26 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
               variant="outline"
               size="sm"
               onClick={handleSaveCalculation}
-              className="flex items-center space-x-2"
+              className="hidden md:flex items-center space-x-2"
             >
               <Save className="w-4 h-4" />
               <span>Save Calculation</span>
             </Button>
           )}
 
+          {/* Dark Mode Toggle */}
+          <DarkModeToggle />
+
+          {/* Mobile Navigation */}
+          <MobileNavigation 
+            onSaveCalculation={onSaveCalculation}
+            hasCalculation={hasCalculation}
+          />
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full hidden md:flex">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.user_metadata?.avatar_url ?? undefined} alt={user.email || 'User avatar'} loading="lazy" />
                     <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
@@ -164,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="hidden md:flex items-center space-x-2">
               <Button
                 variant="ghost"
                 size="sm"

@@ -299,9 +299,42 @@ const defaultSouthAfricaTaxData: SouthAfricaTaxData = {
 };
 
 const steps = [
-  { label: 'Location & Salary', value: 'basics' },
-  { label: 'Tax Calculation', value: 'taxes' },
-  { label: 'Analysis', value: 'analysis' },
+  { 
+    id: 'basics', 
+    label: 'Location & Salary', 
+    description: 'Enter your location and salary details'
+  },
+  { 
+    id: 'taxes', 
+    label: 'Tax Calculation', 
+    description: 'Calculate your taxes and deductions'
+  },
+  { 
+    id: 'analysis', 
+    label: 'Analysis', 
+    description: 'View insights and savings analysis'
+  },
+];
+
+const onboardingSteps = [
+  {
+    id: 'country-selector',
+    title: 'Select Your Country',
+    description: 'Start by choosing your country to get accurate tax calculations.',
+    target: '[data-onboarding="country-selector"]'
+  },
+  {
+    id: 'salary-input',
+    title: 'Enter Your Salary',
+    description: 'Input your gross annual salary for precise calculations.',
+    target: '[data-onboarding="salary-input"]'
+  },
+  {
+    id: 'calculate-taxes',
+    title: 'Calculate Taxes',
+    description: 'Click to calculate your taxes and see the breakdown.',
+    target: '[data-onboarding="calculate-button"]'
+  }
 ];
 
 const Index = () => {
@@ -377,6 +410,8 @@ const Index = () => {
   const [usFilingStatus, setUsFilingStatus] = useState<'single' | 'married' | 'head'>('single');
   const [usState, setUsState] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const { isVisible: showOnboarding, complete: completeOnboarding, skip: skipOnboarding } = useOnboarding('tax-calculator');
 
   const debouncedSalaryData = useDebounce(salaryData, 400);
 
@@ -1372,53 +1407,69 @@ const Index = () => {
               <h2 className="text-xl font-bold mb-2">Tax Calculation</h2>
               <>
                 {salaryData.grossSalary > 0 && salaryData.country ? (
-                  <ErrorBoundary>
-                    <TaxCalculator 
-                      salaryData={salaryData}
-                      taxData={memoizedTaxData}
-                      setTaxData={setTaxData}
-                      onNext={() => setActiveTab('analysis')}
-                      indiaRegime={indiaRegime}
-                      setIndiaRegime={setIndiaRegime}
-                      usFilingStatus={usFilingStatus}
-                      setUsFilingStatus={setUsFilingStatus}
-                      usState={usState}
-                      setUsState={setUsState}
-                    />
-                  </ErrorBoundary>
+                  isCalculating ? (
+                    <CalculationLoading />
+                  ) : (
+                    <ErrorBoundary>
+                      <TaxCalculator 
+                        salaryData={salaryData}
+                        taxData={memoizedTaxData}
+                        setTaxData={setTaxData}
+                        onNext={() => {
+                          setActiveTab('analysis');
+                          if (!completedSteps.includes('analysis')) {
+                            setCompletedSteps(prev => [...prev, 'analysis']);
+                          }
+                        }}
+                        indiaRegime={indiaRegime}
+                        setIndiaRegime={setIndiaRegime}
+                        usFilingStatus={usFilingStatus}
+                        setUsFilingStatus={setUsFilingStatus}
+                        usState={usState}
+                        setUsState={setUsState}
+                      />
+                    </ErrorBoundary>
+                  )
                 ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Please enter your country and annual gross salary to view tax calculations.
-                  </div>
+                  <EmptyState
+                    icon={Calculator}
+                    title="Ready to calculate?"
+                    description="Please complete the Location & Salary step first to view your tax calculations."
+                    action={{
+                      label: "Go to Location & Salary",
+                      onClick: () => setActiveTab('basics')
+                    }}
+                  />
                 )}
               </>
-              {/* Debug info for tax calculation tab */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="text-xs text-muted-foreground mt-4 p-2 bg-gray-50 rounded">
-                  <strong>Debug Info:</strong><br />
-                  Salary: {salaryData.grossSalary}<br />
-                  Country: {salaryData.country}<br />
-                  Tax Data Total: {memoizedTaxData.totalTax}<br />
-                  Tax Data Take Home: {memoizedTaxData.takeHomeSalary}<br />
-                  Condition: {salaryData.grossSalary > 0 && salaryData.country ? 'true' : 'false'}
-                </div>
-              )}
             </TabsContent>
 
             <TabsContent value="analysis" className="space-y-6 transition-opacity duration-200">
               <h2 className="text-xl font-bold mb-2">Living Costs & Savings</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <LivingExpenses 
-                  salaryData={salaryData}
-                  expenseData={memoizedExpenseData}
-                  setExpenseData={setExpenseData}
+              {hasCalculation ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <LivingExpenses 
+                    salaryData={salaryData}
+                    expenseData={memoizedExpenseData}
+                    setExpenseData={setExpenseData}
+                  />
+                  <SavingsAnalysis 
+                    salaryData={salaryData}
+                    taxData={memoizedTaxData}
+                    expenseData={memoizedExpenseData}
+                  />
+                </div>
+              ) : (
+                <EmptyState
+                  icon={TrendingUp}
+                  title="Almost there!"
+                  description="Complete your tax calculation first to see your savings analysis and living cost breakdown."
+                  action={{
+                    label: "Calculate Taxes",
+                    onClick: () => setActiveTab('taxes')
+                  }}
                 />
-                <SavingsAnalysis 
-                  salaryData={salaryData}
-                  taxData={memoizedTaxData}
-                  expenseData={memoizedExpenseData}
-                />
-              </div>
+              )}
               
               {/* Next Steps Card */}
               {user ? (
@@ -1507,6 +1558,14 @@ const Index = () => {
         onLoad={(calculation) => loadCalculation(calculation as LoadCalculationModalSavedCalculation)}
         userId={user?.id || ''}
       />
+      {/* Onboarding Tooltip */}
+      <OnboardingTooltip 
+        steps={onboardingSteps}
+        isVisible={showOnboarding}
+        onComplete={completeOnboarding}
+        onSkip={skipOnboarding}
+      />
+
       {/* Add aria-live region for feedback */}
       <div aria-live="polite" className="sr-only" id="feedback-region"></div>
     </div>
