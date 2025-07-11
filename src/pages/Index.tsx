@@ -27,6 +27,9 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/hooks/use-error-boundary';
 import { Stepper } from '@/components/Stepper';
+import { OnboardingTooltip, useOnboarding } from '@/components/ui/onboarding-tooltip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingSpinner, CalculationLoading } from '@/components/ui/loading-spinner';
 
 export interface SalaryData {
   country: string;
