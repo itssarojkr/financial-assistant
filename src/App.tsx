@@ -1,8 +1,9 @@
+
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { LoadingSpinner } from '@/presentation/components/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // Pages (code split)
 const Landing = lazy(() => import('@/pages/Landing'));
@@ -11,8 +12,6 @@ const DashboardPage = lazy(() => import('@/presentation/pages/DashboardPage').th
 const Index = lazy(() => import('@/pages/Index').then(m => ({ default: m.default })));
 const Help = lazy(() => import('@/pages/Help').then(m => ({ default: m.default })));
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.default })));
-
-// Components
 
 // Styles
 import '@/index.css';

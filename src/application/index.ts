@@ -1,8 +1,9 @@
+
 // Application services
 export * from './services';
 
 // Transaction management
-export { TransactionManager, TransactionContext, TransactionResult } from './transactions/TransactionManager';
+export type { TransactionManager, TransactionContext, TransactionResult } from './transactions/TransactionManager';
 
 // Use cases (to be implemented in future phases)
 // export * from './usecases';

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -29,9 +30,13 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-    setIsOpen(false);
+    try {
+      await signOut();
+      navigate('/');
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   const handleNavigation = (path: string) => {
@@ -40,7 +45,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   };
 
   const getInitials = (email: string) => {
-    return email.charAt(0).toUpperCase();
+    return email?.charAt(0)?.toUpperCase() || 'U';
   };
 
   const menuItems = [
@@ -65,7 +70,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
               <div className="flex items-center space-x-3 p-4 border-b">
                 <Avatar className="h-10 w-10">
                   <AvatarImage 
-                    src={user.user_metadata?.avatar_url ?? undefined} 
+                    src={user.user_metadata?.avatar_url} 
                     alt={user.email || 'User avatar'} 
                   />
                   <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
@@ -76,7 +81,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                       ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                       : 'User'}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-xs text-gray-500 truncate">
                     {user.email}
                   </p>
                 </div>
@@ -128,7 +133,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                   </Button>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-destructive hover:text-destructive"
+                    className="w-full justify-start text-red-600 hover:text-red-600"
                     onClick={handleSignOut}
                   >
                     <LogOut className="w-4 h-4 mr-3" />

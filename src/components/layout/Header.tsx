@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { UserDashboard } from '@/components/dashboard/UserDashboard';
 import { MobileNavigation } from '@/components/ui/mobile-navigation';
@@ -23,12 +24,16 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
   const [showDashboard, setShowDashboard] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   const getInitials = (email: string) => {
-    return email.charAt(0).toUpperCase();
+    return email?.charAt(0)?.toUpperCase() || 'U';
   };
 
   const handleSaveCalculation = () => {
@@ -128,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full hidden md:flex">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.user_metadata?.avatar_url ?? undefined} alt={user.email || 'User avatar'} loading="lazy" />
+                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || 'User avatar'} />
                     <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -141,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({ onSaveCalculation, hasCalculatio
                         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                         : 'User'}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-xs leading-none text-gray-500">
                       {user.email}
                     </p>
                   </div>
