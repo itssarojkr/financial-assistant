@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Expense, CreateExpenseParams, UpdateExpenseParams } from '@/core/domain/entities/Expense';
+import { Expense, CreateExpenseParams } from '@/core/domain/entities/Expense';
 
 export interface ExpenseWithCategory {
   id: string;
@@ -25,14 +26,22 @@ export class ExpenseService {
       const { data, error } = await supabase
         .from('expenses')
         .insert({
-          ...params,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          user_id: params.userId,
+          amount: params.amount,
+          currency: params.currency,
+          description: params.description,
+          date: params.date.toISOString(),
+          calculation_id: params.calculationId,
         })
         .select()
         .single();
 
-      return { data, error };
+      if (error) throw error;
+
+      return { 
+        data: data ? this.mapToExpense(data) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error creating expense:', error);
       return { data: null, error };
@@ -47,7 +56,12 @@ export class ExpenseService {
         .eq('id', id)
         .single();
 
-      return { data, error };
+      if (error) throw error;
+
+      return { 
+        data: data ? this.mapToExpense(data) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error fetching expense by ID:', error);
       return { data: null, error };
@@ -62,7 +76,12 @@ export class ExpenseService {
         .eq('user_id', userId)
         .order('date', { ascending: false });
 
-      return { data, error };
+      if (error) throw error;
+
+      return { 
+        data: data ? data.map(this.mapToExpense) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error fetching expenses by user ID:', error);
       return { data: null, error };
@@ -88,7 +107,6 @@ export class ExpenseService {
 
       return data?.map(expense => ({
         ...expense,
-        period: expense.period || 'monthly' as const,
         currency: expense.currency || 'USD',
       })) || [];
     } catch (error) {
@@ -111,25 +129,15 @@ export class ExpenseService {
     }
   }
 
-  static validateExpenseDescription(description: string): boolean {
-    return description.length > 0 && description.length <= 255;
-  }
-
-  static validateExpenseAmount(amount: number, maxAmount: number = 1000000): boolean {
-    return amount > 0 && amount <= maxAmount;
-  }
-
   static async updateExpense(id: string, updates: Partial<Expense>): Promise<{ data: any; error: any }> {
     try {
-      const updateData: any = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
+      const updateData: any = {};
 
-      // Only include calculationId if it's provided and not undefined
-      if (updates.calculationId !== undefined) {
-        updateData.calculation_id = updates.calculationId;
-      }
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.currency !== undefined) updateData.currency = updates.currency;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.date !== undefined) updateData.date = updates.date.toISOString();
+      if (updates.calculationId !== undefined) updateData.calculation_id = updates.calculationId;
 
       const { data, error } = await supabase
         .from('expenses')
@@ -143,5 +151,28 @@ export class ExpenseService {
       console.error('Error updating expense:', error);
       return { data: null, error };
     }
+  }
+
+  static validateExpenseDescription(description: string): boolean {
+    return description.length > 0 && description.length <= 255;
+  }
+
+  static validateExpenseAmount(amount: number, maxAmount: number = 1000000): boolean {
+    return amount > 0 && amount <= maxAmount;
+  }
+
+  private static mapToExpense(data: any): Expense {
+    return {
+      id: data.id,
+      userId: data.user_id,
+      amount: data.amount,
+      currency: data.currency,
+      description: data.description || '',
+      category: data.category || 'other',
+      date: new Date(data.date),
+      calculationId: data.calculation_id,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at || data.created_at),
+    };
   }
 }

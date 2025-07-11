@@ -1,27 +1,9 @@
-import { supabase } from '@/integrations/supabase/client';
 
-export interface UserPreferences {
-  theme: 'light' | 'dark' | 'system';
-  currency: string;
-  notifications: {
-    email: boolean;
-    push: boolean;
-    budgetAlerts: boolean;
-    taxReminders: boolean;
-  };
-  privacy: {
-    dataSharing: boolean;
-    analytics: boolean;
-  };
-  accessibility: {
-    reducedMotion: boolean;
-    highContrast: boolean;
-    fontSize: 'small' | 'medium' | 'large';
-  };
-}
+import { supabase } from '@/integrations/supabase/client';
+import { UserPreferences } from '@/core/domain/entities/UserPreferences';
 
 export class PreferencesService {
-  static async getPreferences(userId: string): Promise<UserPreferences | null> {
+  static async getUserPreferences(userId: string): Promise<{ data: UserPreferences | null; error: any }> {
     try {
       const { data, error } = await supabase
         .from('user_preferences')
@@ -29,82 +11,82 @@ export class PreferencesService {
         .eq('user_id', userId)
         .single();
 
-      if (error) {
-        console.error('Error fetching user preferences:', error);
-        return null;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
       }
 
-      return data as UserPreferences;
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-      return null;
-    }
-  }
-
-  static async updatePreferences(userId: string, preferences: Partial<UserPreferences>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update(preferences)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error updating user preferences:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error updating user preferences:', error);
-      return false;
-    }
-  }
-
-  static async createPreferences(userId: string, preferences: UserPreferences): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .insert({ user_id: userId, ...preferences });
-
-      if (error) {
-        console.error('Error creating user preferences:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error creating user preferences:', error);
-      return false;
-    }
-  }
-
-  static async ensurePreferencesExist(userId: string): Promise<boolean> {
-    const existingPreferences = await PreferencesService.getPreferences(userId);
-
-    if (!existingPreferences) {
-      const defaultPreferences: UserPreferences = {
-        theme: 'system',
-        currency: 'USD',
+      const preferences: UserPreferences = data ? {
+        userId: data.user_id,
+        theme: data.theme || 'light',
+        language: data.language || 'en',
+        currency: data.default_currency || 'USD',
         notifications: {
           email: true,
-          push: false,
-          budgetAlerts: true,
-          taxReminders: true,
+          push: true,
+          sms: false,
+          ...(typeof data.notifications === 'object' ? data.notifications : {})
         },
-        privacy: {
-          dataSharing: false,
-          analytics: true,
-        },
-        accessibility: {
-          reducedMotion: false,
-          highContrast: false,
-          fontSize: 'medium',
-        },
+        smsScanning: data.sms_scanning_enabled || false,
+        createdAt: new Date(data.created_at || new Date()),
+        updatedAt: new Date(data.updated_at || new Date()),
+      } : {
+        userId,
+        theme: 'light',
+        language: 'en',
+        currency: 'USD',
+        notifications: { email: true, push: true, sms: false },
+        smsScanning: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      return PreferencesService.createPreferences(userId, defaultPreferences);
+      return { data: preferences, error: null };
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+      return { data: null, error };
     }
+  }
 
-    return true;
+  static async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<{ data: UserPreferences | null; error: any }> {
+    try {
+      const updateData: any = {
+        user_id: userId,
+        theme: preferences.theme,
+        language: preferences.language,
+        default_currency: preferences.currency,
+        notifications: preferences.notifications,
+        sms_scanning_enabled: preferences.smsScanning,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .upsert(updateData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedPreferences: UserPreferences = {
+        userId: data.user_id,
+        theme: data.theme || 'light',
+        language: data.language || 'en',
+        currency: data.default_currency || 'USD',
+        notifications: {
+          email: true,
+          push: true,
+          sms: false,
+          ...(typeof data.notifications === 'object' ? data.notifications : {})
+        },
+        smsScanning: data.sms_scanning_enabled || false,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+
+      return { data: updatedPreferences, error: null };
+    } catch (error) {
+      console.error('Error updating user preferences:', error);
+      return { data: null, error };
+    }
   }
 }
