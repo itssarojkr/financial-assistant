@@ -1,188 +1,163 @@
 
-import { Budget } from '@/core/domain/entities/Budget';
-import { BudgetRepository } from '@/infrastructure/database/repositories/BudgetRepository';
-import { PaginationParams, PaginatedResult } from '@/infrastructure/database/repositories/BaseRepository';
+import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Budget service for orchestrating budget-related business logic
- */
+export interface Budget {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  period: string;
+  category_id?: number;
+  start_date?: string;
+  end_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateBudgetData {
+  userId: string;
+  amount: number;
+  currency: string;
+  period: string;
+  categoryId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  color?: string;
+  icon?: string;
+}
+
 export class BudgetService {
-  private readonly budgetRepository: BudgetRepository;
-
-  constructor(budgetRepository: BudgetRepository) {
-    this.budgetRepository = budgetRepository;
-  }
-
-  /**
-   * Creates a new budget with validation and business rules
-   */
-  async createBudget(
-    userId: string,
-    name: string,
-    amount: number,
-    currency: string,
-    startDate: Date,
-    endDate: Date,
-    categories?: string[],
-    description?: string,
-    isRecurring?: boolean,
-    recurringInterval?: string
-  ): Promise<Budget> {
+  static async createBudget(data: CreateBudgetData): Promise<{ data: Budget | null; error: any }> {
     try {
-      // Validate required fields
-      if (!userId || !name || !amount || !currency || !startDate || !endDate) {
-        throw new Error('Missing required fields for budget creation');
-      }
+      const { data: budget, error } = await supabase
+        .from('budgets')
+        .insert({
+          user_id: data.userId,
+          amount: data.amount,
+          currency: data.currency,
+          period: data.period,
+          category_id: data.categoryId,
+          start_date: data.startDate,
+          end_date: data.endDate,
+        })
+        .select()
+        .single();
 
-      if (amount <= 0) {
-        throw new Error('Budget amount must be greater than zero');
-      }
-
-      if (startDate >= endDate) {
-        throw new Error('Start date must be before end date');
-      }
-
-      // Generate unique ID
-      const budgetId = this.generateBudgetId();
-
-      // Create budget data
-      const budgetData = {
-        id: budgetId,
-        userId,
-        name,
-        amount,
-        currency,
-        startDate,
-        endDate,
-        categories: categories || [],
-        description: description || null,
-        isRecurring: isRecurring || false,
-        recurringInterval: recurringInterval || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Save to database
-      return await this.budgetRepository.create(budgetData);
+      return { data: budget, error };
     } catch (error) {
-      throw new Error(`Failed to create budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
   }
 
-  /**
-   * Gets a budget by ID with proper error handling
-   */
-  async getBudgetById(budgetId: string): Promise<Budget | null> {
+  static async getUserBudgets(userId: string): Promise<{ data: Budget[] | null; error: any }> {
     try {
-      return await this.budgetRepository.findById(budgetId);
+      const { data, error } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      return { data, error };
     } catch (error) {
-      throw new Error(`Failed to get budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
   }
 
-  /**
-   * Gets budgets for a specific user with pagination
-   */
-  async getUserBudgets(userId: string, pagination?: PaginationParams): Promise<PaginatedResult<Budget>> {
+  static async updateBudget(id: string, updates: Partial<CreateBudgetData>): Promise<{ data: Budget | null; error: any }> {
     try {
-      return await this.budgetRepository.findByUserId(userId, pagination);
+      const { data, error } = await supabase
+        .from('budgets')
+        .update({
+          amount: updates.amount,
+          currency: updates.currency,
+          period: updates.period,
+          category_id: updates.categoryId,
+          start_date: updates.startDate,
+          end_date: updates.endDate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      return { data, error };
     } catch (error) {
-      throw new Error(`Failed to get user budgets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
   }
 
-  /**
-   * Gets active budgets for a specific user
-   */
-  async getActiveBudgets(userId: string): Promise<Budget[]> {
+  static async deleteBudget(id: string): Promise<{ data: any; error: any }> {
     try {
-      const now = new Date();
-      return await this.budgetRepository.findActive(userId, now);
+      const { data, error } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('id', id);
+
+      return { data, error };
     } catch (error) {
-      throw new Error(`Failed to get active budgets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
   }
 
-  /**
-   * Updates a budget with validation
-   */
-  async updateBudget(budgetId: string, updates: Partial<Budget>): Promise<Budget> {
+  static async getExpenseCategories(): Promise<{ data: ExpenseCategory[] | null; error: any }> {
     try {
-      const existingBudget = await this.budgetRepository.findById(budgetId);
-      if (!existingBudget) {
-        throw new Error('Budget not found');
-      }
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .select('*')
+        .order('name');
 
-      // Validate updates
-      if (updates.amount !== undefined && updates.amount <= 0) {
-        throw new Error('Budget amount must be greater than zero');
-      }
-
-      if (updates.startDate && updates.endDate && updates.startDate >= updates.endDate) {
-        throw new Error('Start date must be before end date');
-      }
-
-      return await this.budgetRepository.update(budgetId, updates);
+      return { data, error };
     } catch (error) {
-      throw new Error(`Failed to update budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
   }
 
-  /**
-   * Deletes a budget
-   */
-  async deleteBudget(budgetId: string): Promise<boolean> {
+  static async getBudgetVsActual(userId: string, period: string = 'monthly'): Promise<{ data: any; error: any }> {
     try {
-      return await this.budgetRepository.delete(budgetId);
+      // Get budgets for the user
+      const { data: budgets, error: budgetError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('period', period);
+
+      if (budgetError) throw budgetError;
+
+      // Get actual expenses
+      const { data: expenses, error: expenseError } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (expenseError) throw expenseError;
+
+      // Calculate budget vs actual
+      const budgetAnalysis = budgets?.map(budget => {
+        const categoryExpenses = expenses?.filter(expense => 
+          expense.category_id === budget.category_id
+        ) || [];
+
+        const totalSpent = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        const remaining = budget.amount - totalSpent;
+        const percentageUsed = (totalSpent / budget.amount) * 100;
+
+        return {
+          budget,
+          totalSpent,
+          remaining,
+          percentageUsed,
+          isOverBudget: totalSpent > budget.amount
+        };
+      });
+
+      return { data: budgetAnalysis, error: null };
     } catch (error) {
-      throw new Error(`Failed to delete budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { data: null, error };
     }
-  }
-
-  /**
-   * Gets budget progress and spending analysis
-   */
-  async getBudgetProgress(budgetId: string): Promise<{
-    budget: Budget;
-    totalSpent: number;
-    remainingAmount: number;
-    progressPercentage: number;
-    dailyAverage: number;
-    projectedOverspend: boolean;
-    categoryBreakdown: Record<string, number>;
-  }> {
-    try {
-      const budget = await this.budgetRepository.findById(budgetId);
-      if (!budget) {
-        throw new Error('Budget not found');
-      }
-
-      // Mock data for now - in real implementation, get from ExpenseService
-      const totalSpent = 0;
-      const remainingAmount = budget.amount - totalSpent;
-      const progressPercentage = (totalSpent / budget.amount) * 100;
-      const dailyAverage = 0;
-      const projectedOverspend = false;
-      const categoryBreakdown: Record<string, number> = {};
-
-      return {
-        budget,
-        totalSpent,
-        remainingAmount,
-        progressPercentage,
-        dailyAverage,
-        projectedOverspend,
-        categoryBreakdown,
-      };
-    } catch (error) {
-      throw new Error(`Failed to get budget progress: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Generates a unique budget ID
-   */
-  private generateBudgetId(): string {
-    return `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }

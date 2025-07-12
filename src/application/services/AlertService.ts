@@ -2,7 +2,19 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Alert } from '@/core/domain/entities/Alert';
 
-export interface AlertWithDetails {
+export interface CreateAlertData {
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  threshold?: number;
+  period?: string;
+  active?: boolean;
+  severity?: string;
+  currency?: string;
+}
+
+export interface SpendingAlert {
   id: string;
   user_id: string;
   type: string;
@@ -16,17 +28,7 @@ export interface AlertWithDetails {
 }
 
 export class AlertService {
-  static async createAlert(params: {
-    userId: string;
-    type: string;
-    title: string;
-    message: string;
-    threshold?: number;
-    period?: string;
-    active?: boolean;
-    severity?: string;
-    currency?: string;
-  }): Promise<{ data: Alert | null; error: any }> {
+  static async createAlert(params: CreateAlertData): Promise<{ data: Alert | null; error: any }> {
     try {
       const { data, error } = await supabase
         .from('spending_alerts')
@@ -79,17 +81,17 @@ export class AlertService {
     }
   }
 
-  static async updateAlert(id: string, updates: Partial<Alert>): Promise<{ data: Alert | null; error: any }> {
+  static async updateAlert(id: string, updates: Partial<CreateAlertData>): Promise<{ data: Alert | null; error: any }> {
     try {
       const { data, error } = await supabase
         .from('spending_alerts')
         .update({
-          type: updates.type || null,
+          type: updates.type,
           threshold: updates.threshold,
           period: updates.period,
-          active: updates.active ?? null,
-          severity: updates.severity || null,
-          currency: updates.currency || null,
+          active: updates.active,
+          severity: updates.severity,
+          currency: updates.currency,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)

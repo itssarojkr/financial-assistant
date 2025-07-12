@@ -1,242 +1,318 @@
-import React, { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  AlertTriangle, 
   Bell, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  AlertTriangle,
-  CheckCircle,
-  Clock
+  Settings, 
+  Plus,
+  Trash2,
+  Edit
 } from 'lucide-react';
-import { AlertForm } from './AlertForm';
-import { AlertService } from '@/application/services/AlertService';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { AlertService, CreateAlertData, SpendingAlert } from '@/application/services/AlertService';
 
 interface AlertListProps {
-  alerts: SpendingAlert[];
-  onAlertUpdate: () => void;
-  userId: string;
+  onCreateAlert: (alert: CreateAlertData) => void;
 }
 
-export const AlertList: React.FC<AlertListProps> = ({
-  alerts,
-  onAlertUpdate,
-  userId,
-}) => {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingAlert, setEditingAlert] = useState<SpendingAlert | null>(null);
+export function AlertList({ onCreateAlert }: AlertListProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const [alerts, setAlerts] = useState<SpendingAlert[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleAddAlert = async (alertData: CreateAlertData) => {
+  useEffect(() => {
+    if (user) {
+      loadAlerts();
+    }
+  }, [user]);
+
+  const loadAlerts = async () => {
+    if (!user) return;
+    
+    setLoading(true);
     try {
-      await AlertService.createAlert(userId, alertData);
-      setIsAddDialogOpen(false);
-      onAlertUpdate();
-      toast({ title: 'Alert added', description: 'Your alert has been added successfully.' });
-    } catch (error: unknown) {
-      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
-      toast({ title: 'Error adding alert', description: message || 'Failed to add alert.', variant: 'destructive' });
+      const { data, error } = await AlertService.getUserAlerts(user.id);
+      if (error) {
+        toast({
+          title: "Error loading alerts",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setAlerts(data as SpendingAlert[] || []);
+      }
+    } catch (error) {
+      toast({
+        title: "Error loading alerts",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEditAlert = async (alertData: CreateAlertData) => {
-    if (!editingAlert) return;
+  const handleCreateAlert = async (alertData: CreateAlertData) => {
+    if (!user) return;
+
     try {
-      await AlertService.updateAlert(editingAlert.id, alertData);
-      setEditingAlert(null);
-      onAlertUpdate();
-      toast({ title: 'Alert updated', description: 'Your alert has been updated successfully.' });
-    } catch (error: unknown) {
-      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
-      toast({ title: 'Error updating alert', description: message || 'Failed to update alert.', variant: 'destructive' });
+      const { error } = await AlertService.createAlert(alertData);
+      if (error) throw error;
+      
+      toast({
+        title: "Alert created",
+        description: "Your spending alert has been set up successfully.",
+      });
+      
+      loadAlerts();
+      onCreateAlert(alertData);
+    } catch (error: any) {
+      toast({
+        title: "Error creating alert",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteAlert = async (alertId: string) => {
-    if (!confirm('Are you sure you want to delete this alert?')) return;
     try {
-      await AlertService.deleteAlert(alertId);
-      onAlertUpdate();
-      toast({ title: 'Alert deleted', description: 'Your alert has been deleted.' });
-    } catch (error: unknown) {
-      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
-      toast({ title: 'Error deleting alert', description: message || 'Failed to delete alert.', variant: 'destructive' });
+      const { error } = await AlertService.deleteAlert(alertId);
+      if (error) throw error;
+      
+      toast({
+        title: "Alert deleted",
+        description: "The alert has been removed.",
+      });
+      
+      loadAlerts();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting alert",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const handleToggleActive = async (alertId: string, active: boolean) => {
-    try {
-      await AlertService.updateAlert(alertId, { active });
-      onAlertUpdate();
-      toast({ title: 'Alert status updated', description: 'Alert status has been updated.' });
-    } catch (error: unknown) {
-      const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
-      toast({ title: 'Error updating alert status', description: message || 'Failed to update alert status.', variant: 'destructive' });
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'bg-red-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'low': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
   };
 
-  const getCategoryName = (categoryId: number | null) => {
-    if (!categoryId) return 'All Categories';
-    // This would need to be passed from parent or fetched
-    return 'Category'; // Placeholder
-  };
-
-  const getPeriodLabel = (period: string) => {
-    const labels: Record<string, string> = {
-      daily: 'Daily',
-      weekly: 'Weekly',
-      monthly: 'Monthly',
-      quarterly: 'Quarterly',
-      yearly: 'Yearly',
-    };
-    return labels[period] || period;
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case 'high': return <AlertTriangle className="w-4 h-4" />;
+      case 'medium': return <Bell className="w-4 h-4" />;
+      case 'low': return <Settings className="w-4 h-4" />;
+      default: return <Bell className="w-4 h-4" />;
+    }
   };
 
   const activeAlerts = alerts.filter(alert => alert.active);
-  const inactiveAlerts = alerts.filter(alert => !alert.active);
+
+  if (!user) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">Please sign in to manage alerts.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-orange-600" />
-              Spending Alerts
-            </CardTitle>
-            <CardDescription>
-              {alerts.length} alerts • {activeAlerts.length} active
-            </CardDescription>
-          </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Alert
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Alert</DialogTitle>
-              </DialogHeader>
-              <AlertForm
-                onSave={handleAddAlert}
-                onCancel={() => setIsAddDialogOpen(false)}
-                userId={userId}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Alerts Table */}
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Threshold</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {alerts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                    No alerts found. Create your first spending alert to get notified.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                alerts.map((alert) => (
-                  <TableRow key={alert.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {alert.category_id ? (
-                          <Badge variant="secondary">
-                            {getCategoryName(alert.category_id)}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">All Categories</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {alert.threshold.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span>{getPeriodLabel(alert.period)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {alert.active ? (
-                          <Badge variant="default" className="flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Inactive
-                          </Badge>
-                        )}
-                        <Switch
-                          checked={alert.active}
-                          onCheckedChange={(checked) => handleToggleActive(alert.id, checked)}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingAlert(alert)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Edit Alert</DialogTitle>
-                            </DialogHeader>
-                            <AlertForm
-                              alert={alert}
-                              onSave={handleEditAlert}
-                              onCancel={() => setEditingAlert(null)}
-                              userId={userId}
-                            />
-                          </DialogContent>
-                        </Dialog>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Spending Alerts</h2>
+        <Button onClick={() => handleCreateAlert({
+          userId: user.id,
+          type: 'spending',
+          title: 'New Alert',
+          message: 'New spending alert created'
+        })}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Alert
+        </Button>
+      </div>
+
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList>
+          <TabsTrigger value="active">
+            Active Alerts ({activeAlerts.length})
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            All Alerts ({alerts.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading alerts...</p>
+            </div>
+          ) : activeAlerts.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Bell className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">No Active Alerts</h3>
+                <p className="text-muted-foreground mb-4">
+                  Set up spending alerts to monitor your expenses and stay within budget.
+                </p>
+                <Button onClick={() => handleCreateAlert({
+                  userId: user.id,
+                  type: 'spending',
+                  title: 'First Alert',
+                  message: 'Your first spending alert'
+                })}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Alert
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {activeAlerts.map((alert) => (
+                <Card key={alert.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      {getSeverityIcon(alert.severity || 'medium')}
+                      <span className="capitalize">{alert.type} Alert</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getSeverityColor(alert.severity || 'medium')}>
+                        {alert.severity || 'Medium'}
+                      </Badge>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
                           onClick={() => handleDeleteAlert(alert.id)}
-                          className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Threshold:</span>
+                        <span className="font-medium">
+                          {alert.currency} {alert.threshold.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Period:</span>
+                        <span className="capitalize">{alert.period}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <Badge variant={alert.active ? "default" : "secondary"}>
+                          {alert.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="all" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading alerts...</p>
+            </div>
+          ) : alerts.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Bell className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">No Alerts Yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Create your first spending alert to get started.
+                </p>
+                <Button onClick={() => handleCreateAlert({
+                  userId: user.id,
+                  type: 'spending',
+                  title: 'First Alert',
+                  message: 'Your first spending alert'
+                })}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Alert
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {alerts.map((alert) => (
+                <Card key={alert.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      {getSeverityIcon(alert.severity || 'medium')}
+                      <span className="capitalize">{alert.type} Alert</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getSeverityColor(alert.severity || 'medium')}>
+                        {alert.severity || 'Medium'}
+                      </Badge>
+                      <Badge variant={alert.active ? "default" : "secondary"}>
+                        {alert.active ? "Active" : "Inactive"}
+                      </Badge>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleDeleteAlert(alert.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Threshold:</span>
+                        <span className="font-medium">
+                          {alert.currency} {alert.threshold.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Period:</span>
+                        <span className="capitalize">{alert.period}</span>
+                      </div>
+                      {alert.created_at && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Created:</span>
+                          <span>{new Date(alert.created_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-}; 
+}

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RepositoryFactory } from '@/infrastructure/database/repositories/RepositoryFactory';
 
@@ -17,9 +18,6 @@ export interface TransactionOperation {
   conditions?: Record<string, any>;
 }
 
-/**
- * Transaction manager for handling complex multi-table operations
- */
 export class TransactionManager {
   private static instance: TransactionManager;
 
@@ -27,9 +25,6 @@ export class TransactionManager {
     RepositoryFactory.getInstance();
   }
 
-  /**
-   * Gets the singleton instance of TransactionManager
-   */
   static getInstance(): TransactionManager {
     if (!TransactionManager.instance) {
       TransactionManager.instance = new TransactionManager();
@@ -37,9 +32,6 @@ export class TransactionManager {
     return TransactionManager.instance;
   }
 
-  /**
-   * Executes operations within a transaction
-   */
   async executeTransaction(operations: TransactionOperation[]): Promise<{ success: boolean; results: any[]; error?: any }> {
     const transaction: Transaction = {
       id: this.generateTransactionId(),
@@ -51,7 +43,6 @@ export class TransactionManager {
     try {
       const results: any[] = [];
 
-      // Execute each operation in sequence
       for (const operation of operations) {
         const result = await this.executeOperation(operation);
         results.push(result);
@@ -70,13 +61,9 @@ export class TransactionManager {
     }
   }
 
-  /**
-   * Executes a single operation
-   */
   private async executeOperation(operation: TransactionOperation): Promise<any> {
     const { type, table, data, conditions } = operation;
 
-    // Validate table name against known tables
     const validTables = [
       'budgets', 'user_data', 'expense_categories', 'cities', 'states', 
       'countries', 'expenses', 'localities', 'profiles', 'spending_alerts', 
@@ -87,12 +74,10 @@ export class TransactionManager {
       throw new Error(`Invalid table name: ${table}`);
     }
 
-    const tableTyped = table as any; // Type assertion for supabase client
-
     switch (type) {
       case 'create':
         const { data: createResult, error: createError } = await supabase
-          .from(tableTyped)
+          .from(table as any)
           .insert(data)
           .select();
         if (createError) throw createError;
@@ -102,9 +87,8 @@ export class TransactionManager {
         if (!conditions) {
           throw new Error('Update operations require conditions');
         }
-        let updateQuery = supabase.from(tableTyped).update(data);
+        let updateQuery = supabase.from(table as any).update(data);
         
-        // Apply conditions
         Object.entries(conditions).forEach(([key, value]) => {
           updateQuery = updateQuery.eq(key, value);
         });
@@ -117,9 +101,8 @@ export class TransactionManager {
         if (!conditions) {
           throw new Error('Delete operations require conditions');
         }
-        let deleteQuery = supabase.from(tableTyped);
+        let deleteQuery = supabase.from(table as any);
         
-        // Apply conditions
         Object.entries(conditions).forEach(([key, value]) => {
           deleteQuery = deleteQuery.eq(key, value);
         });
@@ -133,9 +116,6 @@ export class TransactionManager {
     }
   }
 
-  /**
-   * Creates a user with related data in a transaction
-   */
   async createUserWithData(userData: {
     email: string;
     profile?: any;
@@ -144,7 +124,6 @@ export class TransactionManager {
   }): Promise<{ success: boolean; userId?: string; error?: any }> {
     const operations: TransactionOperation[] = [];
 
-    // Add user creation operation
     operations.push({
       id: this.generateOperationId(),
       type: 'create',
@@ -155,7 +134,6 @@ export class TransactionManager {
       },
     });
 
-    // Add preferences creation if provided
     if (userData.preferences) {
       operations.push({
         id: this.generateOperationId(),
@@ -165,14 +143,13 @@ export class TransactionManager {
       });
     }
 
-    // Add initial data operations if provided
     if (userData.initialData) {
-      userData.initialData.forEach((dataItem, index) => {
+      userData.initialData.forEach(() => {
         operations.push({
           id: this.generateOperationId(),
           type: 'create',
           table: 'user_data',
-          data: dataItem,
+          data: userData.initialData,
         });
       });
     }
@@ -192,9 +169,6 @@ export class TransactionManager {
     };
   }
 
-  /**
-   * Updates user and related data in a transaction
-   */
   async updateUserWithData(userId: string, updates: {
     profile?: any;
     preferences?: any;
@@ -202,7 +176,6 @@ export class TransactionManager {
   }): Promise<{ success: boolean; error?: any }> {
     const operations: TransactionOperation[] = [];
 
-    // Add profile update if provided
     if (updates.profile) {
       operations.push({
         id: this.generateOperationId(),
@@ -213,7 +186,6 @@ export class TransactionManager {
       });
     }
 
-    // Add preferences update if provided
     if (updates.preferences) {
       operations.push({
         id: this.generateOperationId(),
@@ -224,7 +196,6 @@ export class TransactionManager {
       });
     }
 
-    // Add additional data operations if provided
     if (updates.additionalData) {
       updates.additionalData.forEach((dataItem) => {
         operations.push({
@@ -247,9 +218,6 @@ export class TransactionManager {
     };
   }
 
-  /**
-   * Deletes user and all related data in a transaction
-   */
   async deleteUserWithData(userId: string): Promise<{ success: boolean; error?: any }> {
     const operations: TransactionOperation[] = [
       {
@@ -304,16 +272,10 @@ export class TransactionManager {
     };
   }
 
-  /**
-   * Generates a unique transaction ID
-   */
   private generateTransactionId(): string {
     return `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Generates a unique operation ID
-   */
   private generateOperationId(): string {
     return `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }

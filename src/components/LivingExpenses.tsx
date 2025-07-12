@@ -1,11 +1,10 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from "@/components/ui/slider"
-import { Textarea } from "@/components/ui/textarea"
 
 interface ExpenseData {
   housing: number;
@@ -21,114 +20,129 @@ interface ExpenseData {
 
 interface SalaryData {
   country: string;
-  countryCode: string;
-  state: string;
-  stateId: string;
-  city: string;
-  cityId: string;
-  locality: string;
-  localityId: string;
-  isNative: boolean;
   grossSalary: number;
   currency: string;
 }
 
-const expenseCategories = [
-  { name: 'Housing', value: 'housing' },
-  { name: 'Food', value: 'food' },
-  { name: 'Transportation', value: 'transportation' },
-  { name: 'Utilities', value: 'utilities' },
-  { name: 'Healthcare', value: 'healthcare' },
-  { name: 'Entertainment', value: 'entertainment' },
-  { name: 'Other', value: 'other' },
-];
-
 interface LivingExpensesProps {
-  expenseData: ExpenseData;
-  setExpenseData: (data: ExpenseData) => void;
-  onNext: () => void;
-  onBack: () => void;
   salaryData: SalaryData;
+  expenseData: ExpenseData;
+  setExpenseData: React.Dispatch<React.SetStateAction<ExpenseData>>;
 }
 
 const LivingExpenses: React.FC<LivingExpensesProps> = ({
   expenseData,
   setExpenseData,
-  onNext,
-  onBack,
-  salaryData,
 }) => {
-  const handleExpenseChange = (category: string, value: number) => {
-    const newExpenseData = {
-      ...expenseData,
-      [category]: value,
-    };
-    
-    // Calculate the new total
-    let newTotal = 0;
-    for (const key in newExpenseData) {
-      if (expenseCategories.find(ec => ec.value === key)) {
-        newTotal += newExpenseData[key];
-      }
-    }
-    newExpenseData.total = newTotal;
+  const [localExpenses, setLocalExpenses] = useState<ExpenseData>(expenseData);
 
-    setExpenseData(newExpenseData);
-  };
+  const expenseCategories = [
+    { key: 'housing', label: 'Housing (Rent/Mortgage)', description: 'Monthly rent or mortgage payment' },
+    { key: 'food', label: 'Food & Groceries', description: 'Monthly food and grocery expenses' },
+    { key: 'transportation', label: 'Transportation', description: 'Car payments, gas, public transport' },
+    { key: 'utilities', label: 'Utilities', description: 'Electricity, water, internet, phone' },
+    { key: 'healthcare', label: 'Healthcare', description: 'Insurance, medical expenses' },
+    { key: 'entertainment', label: 'Entertainment', description: 'Movies, dining out, hobbies' },
+    { key: 'other', label: 'Other Expenses', description: 'Miscellaneous monthly expenses' },
+  ];
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setExpenseData({
-      ...expenseData,
-      description: e.target.value,
+  const handleExpenseChange = (category: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setLocalExpenses(prev => {
+      const updated = {
+        ...prev,
+        [category]: numValue
+      };
+      
+      // Calculate total
+      const total = Object.keys(updated)
+        .filter(key => key !== 'description' && key !== 'total')
+        .reduce((sum, key) => sum + (updated[key as keyof ExpenseData] as number), 0);
+      
+      updated.total = total;
+      return updated;
     });
   };
 
+  const handleSave = () => {
+    setExpenseData(localExpenses);
+  };
+
+  const handleReset = () => {
+    const resetExpenses: ExpenseData = {
+      housing: 0,
+      food: 0,
+      transportation: 0,
+      utilities: 0,
+      healthcare: 0,
+      entertainment: 0,
+      other: 0,
+      description: '',
+      total: 0
+    };
+    setLocalExpenses(resetExpenses);
+    setExpenseData(resetExpenses);
+  };
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Living Expenses</CardTitle>
-        <CardDescription>
-          Enter your estimated monthly living expenses.
-        </CardDescription>
+        <CardTitle className="text-xl font-semibold">Living Expenses</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Enter your monthly living expenses to calculate your net savings potential.
+        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {expenseCategories.map((category) => (
-          <div key={category.value} className="space-y-2">
-            <Label htmlFor={category.value}>{category.name}</Label>
-            <Slider
-              id={category.value}
-              defaultValue={[expenseData[category.value as keyof ExpenseData] as number || 0]}
-              max={10000}
-              step={100}
-              onValueChange={(value) => handleExpenseChange(category.value, value[0])}
-            />
-            <div className="text-sm text-muted-foreground">
-              Estimated: ${expenseData[category.value as keyof ExpenseData]}
+      <CardContent className="space-y-6">
+        <div className="grid gap-4">
+          {expenseCategories.map((category) => (
+            <div key={category.key} className="space-y-2">
+              <Label htmlFor={category.key} className="text-sm font-medium">
+                {category.label}
+              </Label>
+              <Input
+                id={category.key}
+                type="number"
+                placeholder="0"
+                value={localExpenses[category.key as keyof ExpenseData] || ''}
+                onChange={(e) => handleExpenseChange(category.key, e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">{category.description}</p>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         <Separator />
 
-        <div>
-          <Label htmlFor="description">Additional Notes</Label>
-          <Textarea
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium">
+            Additional Notes
+          </Label>
+          <Input
             id="description"
-            placeholder="Any additional details about your expenses?"
-            value={expenseData.description}
-            onChange={handleDescriptionChange}
+            placeholder="Any additional expense details..."
+            value={localExpenses.description}
+            onChange={(e) => setLocalExpenses(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full"
           />
         </div>
 
-        <div className="text-lg font-semibold">
-          Total Estimated Expenses: ${expenseData.total}
+        <Separator />
+
+        <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+          <span className="text-lg font-semibold">Total Monthly Expenses:</span>
+          <span className="text-2xl font-bold text-primary">
+            ${localExpenses.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         </div>
 
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack}>
-            Back
+        <div className="flex gap-3">
+          <Button onClick={handleSave} className="flex-1">
+            Save Expenses
           </Button>
-          <Button onClick={onNext}>Next</Button>
+          <Button onClick={handleReset} variant="outline" className="flex-1">
+            Reset
+          </Button>
         </div>
       </CardContent>
     </Card>
