@@ -3,7 +3,8 @@
 export * from './services';
 
 // Transaction management
-export type { TransactionManager, TransactionContext, TransactionResult } from './transactions/TransactionManager';
+export { TransactionManager } from './transactions/TransactionManager';
+export type { Transaction, TransactionOperation } from './transactions/TransactionManager';
 
 // Use cases (to be implemented in future phases)
 // export * from './usecases';
@@ -12,4 +13,4 @@ export type { TransactionManager, TransactionContext, TransactionResult } from '
 // export * from './events';
 
 // Application validators (to be implemented in future phases)
-// export * from './validators'; 
+// export * from './validators';

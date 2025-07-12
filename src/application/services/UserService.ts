@@ -1,4 +1,3 @@
-
 import { User, CreateUserParams } from '@/core/domain/entities/User';
 import { UserProfile } from '@/core/domain/entities/UserProfile';
 import { UserPreferences } from '@/core/domain/entities/UserPreferences';
@@ -8,9 +7,6 @@ import { PaginationParams, PaginatedResult } from '@/infrastructure/database/rep
 
 /**
  * User service for orchestrating user-related business logic
- * 
- * This service coordinates between repositories and implements
- * application-level user management operations.
  */
 export class UserService {
   private readonly userRepository: UserRepository;
@@ -30,14 +26,14 @@ export class UserService {
         throw new UserValidationError('User with this email already exists');
       }
 
-      // Generate unique ID (in a real app, this might come from auth service)
+      // Generate unique ID
       const userId = this.generateUserId();
 
       // Create user with domain logic
       const createParams: CreateUserParams = { 
         email,
-        profile: profile || undefined,
-        preferences: preferences || undefined
+        profile: profile || {},
+        preferences: preferences || {}
       };
 
       const user = User.create(createParams, userId);

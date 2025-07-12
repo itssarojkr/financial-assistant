@@ -1,3 +1,4 @@
+
 // Core services
 export { UserService } from './UserService';
 export { ExpenseService } from './ExpenseService';
@@ -8,6 +9,7 @@ export { AnalyticsService } from './AnalyticsService';
 export { UserDataService } from './UserDataService';
 export { CalculationStorageService } from './CalculationStorageService';
 export { PreferencesService } from './PreferencesService';
+export { VerificationService } from './VerificationService';
 
 // Service factory
 export { ServiceFactory } from './ServiceFactory';
@@ -16,4 +18,7 @@ export { ServiceFactory } from './ServiceFactory';
 export { TransactionManager } from '../transactions/TransactionManager';
 
 // Tax calculation types
-export type { TaxCalculationResult, TaxCalculationParams } from './TaxCalculationService'; 
+export type { TaxCalculationResult, TaxCalculationParams } from './TaxCalculationService';
+
+// Verification types
+export type { FeatureStatus, SystemVerificationResult } from './VerificationService';

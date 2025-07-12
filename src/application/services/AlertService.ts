@@ -47,22 +47,7 @@ export class AlertService {
       if (error) throw error;
 
       return { 
-        data: data ? {
-          id: data.id,
-          userId: data.user_id,
-          type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
-          threshold: data.threshold,
-          period: data.period,
-          active: data.active || true,
-          severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-          currency: data.currency || 'USD',
-          title: params.title,
-          message: params.message,
-          isRead: false,
-          isDismissed: false,
-          createdAt: new Date(data.created_at || ''),
-          updatedAt: new Date(data.updated_at || ''),
-        } : null, 
+        data: data ? this.mapToAlert(data, params.title, params.message) : null, 
         error: null 
       };
     } catch (error) {
@@ -81,22 +66,11 @@ export class AlertService {
 
       if (error) throw error;
 
-      const alerts = data?.map(item => ({
-        id: item.id,
-        userId: item.user_id,
-        type: (item.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
-        threshold: item.threshold,
-        period: item.period,
-        active: item.active || true,
-        severity: (item.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-        currency: item.currency || 'USD',
-        title: `Spending Alert - ${item.type}`,
-        message: `You have exceeded your ${item.type} threshold`,
-        isRead: false,
-        isDismissed: false,
-        createdAt: new Date(item.created_at || ''),
-        updatedAt: new Date(item.updated_at || ''),
-      })) || [];
+      const alerts = data?.map(item => this.mapToAlert(
+        item,
+        `Spending Alert - ${item.type}`,
+        `You have exceeded your ${item.type} threshold`
+      )) || [];
 
       return { data: alerts, error: null };
     } catch (error) {
@@ -110,12 +84,12 @@ export class AlertService {
       const { data, error } = await supabase
         .from('spending_alerts')
         .update({
-          type: updates.type,
+          type: updates.type || null,
           threshold: updates.threshold,
           period: updates.period,
           active: updates.active ?? null,
-          severity: updates.severity,
-          currency: updates.currency,
+          severity: updates.severity || null,
+          currency: updates.currency || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -125,22 +99,11 @@ export class AlertService {
       if (error) throw error;
 
       return { 
-        data: data ? {
-          id: data.id,
-          userId: data.user_id,
-          type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
-          threshold: data.threshold,
-          period: data.period,
-          active: data.active || true,
-          severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-          currency: data.currency || 'USD',
-          title: updates.title || `Alert - ${data.type}`,
-          message: updates.message || `Alert updated`,
-          isRead: updates.isRead || false,
-          isDismissed: updates.isDismissed || false,
-          createdAt: new Date(data.created_at || ''),
-          updatedAt: new Date(data.updated_at || ''),
-        } : null, 
+        data: data ? this.mapToAlert(
+          data,
+          updates.title || `Alert - ${data.type}`,
+          updates.message || `Alert updated`
+        ) : null, 
         error: null 
       };
     } catch (error) {
@@ -161,5 +124,21 @@ export class AlertService {
       console.error('Error deleting alert:', error);
       return { data: null, error };
     }
+  }
+
+  private static mapToAlert(data: any, title: string, message: string): Alert {
+    return Alert.create({
+      userId: data.user_id,
+      type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
+      title,
+      message,
+      severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+      isRead: false,
+      isDismissed: false,
+      threshold: data.threshold,
+      period: data.period,
+      active: data.active || true,
+      currency: data.currency || 'USD',
+    }, data.id);
   }
 }

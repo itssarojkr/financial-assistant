@@ -1,3 +1,4 @@
+
 import { UserService } from './UserService';
 import { UserPreferences } from '@/core/domain/entities/UserPreferences';
 
@@ -87,9 +88,6 @@ export interface TaxBracket {
 
 /**
  * Tax calculation service for computing tax obligations
- * 
- * This service provides comprehensive tax calculation capabilities
- * for different countries, states, and localities.
  */
 export class TaxCalculationService {
   private readonly userService: UserService;
@@ -106,9 +104,6 @@ export class TaxCalculationService {
       // Validate input parameters
       this.validateTaxCalculationParams(params);
 
-      // Get tax brackets and rules for the jurisdiction
-      const taxRules = await this.getTaxRules(params.country, params.state || '', params.city || '');
-
       // Calculate deductions
       const deductions = this.calculateDeductions(params);
 
@@ -116,13 +111,13 @@ export class TaxCalculationService {
       const taxableIncome = Math.max(0, params.grossIncome - deductions.total);
 
       // Calculate federal taxes
-      const federalTax = this.calculateFederalTax(taxableIncome, params);
+      const federalTax = this.calculateFederalTax(taxableIncome);
 
       // Calculate state taxes
-      const stateTax = this.calculateStateTax(taxableIncome, params);
+      const stateTax = this.calculateStateTax(taxableIncome, params.state);
 
       // Calculate local taxes
-      const localTax = this.calculateLocalTax(taxableIncome, params);
+      const localTax = this.calculateLocalTax(taxableIncome);
 
       // Calculate payroll taxes
       const socialSecurityTax = this.calculateSocialSecurityTax(params.grossIncome);
@@ -139,7 +134,7 @@ export class TaxCalculationService {
 
       // Calculate effective and marginal tax rates
       const effectiveTaxRate = params.grossIncome > 0 ? (totalTax / params.grossIncome) * 100 : 0;
-      const marginalTaxRate = this.calculateMarginalTaxRate(params);
+      const marginalTaxRate = this.calculateMarginalTaxRate();
 
       return {
         grossIncome: params.grossIncome,
@@ -154,9 +149,9 @@ export class TaxCalculationService {
         effectiveTaxRate,
         marginalTaxRate,
         breakdown: {
-          federal: this.getFederalTaxBrackets(taxableIncome, params),
-          state: this.getStateTaxBrackets(taxableIncome, params),
-          local: this.getLocalTaxBrackets(taxableIncome, params),
+          federal: this.getFederalTaxBrackets(taxableIncome),
+          state: this.getStateTaxBrackets(taxableIncome),
+          local: this.getLocalTaxBrackets(taxableIncome),
         },
         deductions,
         credits,
@@ -175,9 +170,6 @@ export class TaxCalculationService {
       if (!user) {
         throw new Error('User not found');
       }
-
-      // Get user preferences for additional context
-      const userPreferences = await this.getUserPreferences(userId);
 
       // Enhance params with user-specific data
       const enhancedParams: TaxCalculationParams = {
@@ -213,31 +205,6 @@ export class TaxCalculationService {
     if (params.dependents !== undefined && params.dependents < 0) {
       throw new Error('Dependents cannot be negative');
     }
-  }
-
-  /**
-   * Gets user preferences (placeholder implementation)
-   */
-  private async getUserPreferences(userId: string): Promise<UserPreferences | null> {
-    // This would typically call a preferences service
-    // For now, return null as a placeholder
-    return null;
-  }
-
-  /**
-   * Gets tax rules for a jurisdiction
-   */
-  private async getTaxRules(country: string, state: string, city: string): Promise<any> {
-    // This would typically fetch from a database or external service
-    // For now, return mock data
-    return {
-      country,
-      state,
-      city,
-      federalBrackets: [],
-      stateBrackets: [],
-      localBrackets: [],
-    };
   }
 
   /**
@@ -285,7 +252,7 @@ export class TaxCalculationService {
   /**
    * Calculates federal tax
    */
-  private calculateFederalTax(taxableIncome: number, params: TaxCalculationParams): number {
+  private calculateFederalTax(taxableIncome: number): number {
     // This would use actual federal tax brackets
     // For now, return a simple calculation
     return taxableIncome * 0.22; // Simplified 22% rate
@@ -294,7 +261,7 @@ export class TaxCalculationService {
   /**
    * Calculates state tax
    */
-  private calculateStateTax(taxableIncome: number, params: TaxCalculationParams): number {
+  private calculateStateTax(taxableIncome: number, state?: string): number {
     // This would use actual state tax brackets
     // For now, return a simple calculation based on state
     const stateRates: Record<string, number> = {
@@ -304,14 +271,14 @@ export class TaxCalculationService {
       'FL': 0,
     };
 
-    const rate = stateRates[params.state || ''] || 0.05;
+    const rate = stateRates[state || ''] || 0.05;
     return taxableIncome * rate;
   }
 
   /**
    * Calculates local tax
    */
-  private calculateLocalTax(taxableIncome: number, params: TaxCalculationParams): number {
+  private calculateLocalTax(taxableIncome: number): number {
     // This would use actual local tax rates
     // For now, return a simple calculation
     return taxableIncome * 0.01; // Simplified 1% rate
@@ -379,7 +346,7 @@ export class TaxCalculationService {
   /**
    * Calculates marginal tax rate
    */
-  private calculateMarginalTaxRate(params: TaxCalculationParams): number {
+  private calculateMarginalTaxRate(): number {
     // This would calculate the actual marginal rate
     // For now, return a simplified rate
     return 22; // Simplified 22% marginal rate
@@ -388,7 +355,7 @@ export class TaxCalculationService {
   /**
    * Gets federal tax brackets
    */
-  private getFederalTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+  private getFederalTaxBrackets(taxableIncome: number): TaxBracket[] {
     // This would return actual federal tax brackets
     // For now, return mock data
     return [
@@ -401,7 +368,7 @@ export class TaxCalculationService {
   /**
    * Gets state tax brackets
    */
-  private getStateTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+  private getStateTaxBrackets(taxableIncome: number): TaxBracket[] {
     // This would return actual state tax brackets
     // For now, return mock data
     return [];
@@ -410,7 +377,7 @@ export class TaxCalculationService {
   /**
    * Gets local tax brackets
    */
-  private getLocalTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+  private getLocalTaxBrackets(taxableIncome: number): TaxBracket[] {
     // This would return actual local tax brackets
     // For now, return mock data
     return [];
@@ -472,16 +439,5 @@ export class TaxCalculationService {
     } catch (error) {
       throw new Error(`Tax optimization analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
-
-  /**
-   * Formats location components for display
-   */
-  private formatLocationComponents(country?: string, state?: string, city?: string): [string, string, string] {
-    return [
-      country || '',
-      state || '',
-      city || ''
-    ];
   }
 }

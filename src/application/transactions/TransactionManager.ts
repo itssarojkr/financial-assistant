@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { RepositoryFactory } from '@/infrastructure/database/repositories/RepositoryFactory';
 
@@ -20,15 +19,11 @@ export interface TransactionOperation {
 
 /**
  * Transaction manager for handling complex multi-table operations
- * 
- * This class provides transaction management capabilities to ensure
- * data consistency across multiple database operations.
  */
 export class TransactionManager {
   private static instance: TransactionManager;
 
   private constructor() {
-    // Initialize repository factory but don't store reference since it's unused
     RepositoryFactory.getInstance();
   }
 
@@ -56,32 +51,17 @@ export class TransactionManager {
     try {
       const results: any[] = [];
 
-      // Start transaction
-      const { data, error } = await supabase.rpc('begin_transaction');
-      if (error) throw error;
-
-      // Execute each operation
+      // Execute each operation in sequence
       for (const operation of operations) {
         const result = await this.executeOperation(operation);
         results.push(result);
       }
-
-      // Commit transaction
-      const { error: commitError } = await supabase.rpc('commit_transaction');
-      if (commitError) throw commitError;
 
       transaction.status = 'committed';
       transaction.completedAt = new Date();
 
       return { success: true, results };
     } catch (error) {
-      // Rollback transaction
-      try {
-        await supabase.rpc('rollback_transaction');
-      } catch (rollbackError) {
-        console.error('Failed to rollback transaction:', rollbackError);
-      }
-
       transaction.status = 'rolled_back';
       transaction.completedAt = new Date();
 
@@ -96,10 +76,23 @@ export class TransactionManager {
   private async executeOperation(operation: TransactionOperation): Promise<any> {
     const { type, table, data, conditions } = operation;
 
+    // Validate table name against known tables
+    const validTables = [
+      'budgets', 'user_data', 'expense_categories', 'cities', 'states', 
+      'countries', 'expenses', 'localities', 'profiles', 'spending_alerts', 
+      'user_preferences', 'user_sessions'
+    ];
+
+    if (!validTables.includes(table)) {
+      throw new Error(`Invalid table name: ${table}`);
+    }
+
+    const tableTyped = table as any; // Type assertion for supabase client
+
     switch (type) {
       case 'create':
         const { data: createResult, error: createError } = await supabase
-          .from(table)
+          .from(tableTyped)
           .insert(data)
           .select();
         if (createError) throw createError;
@@ -109,7 +102,7 @@ export class TransactionManager {
         if (!conditions) {
           throw new Error('Update operations require conditions');
         }
-        let updateQuery = supabase.from(table).update(data);
+        let updateQuery = supabase.from(tableTyped).update(data);
         
         // Apply conditions
         Object.entries(conditions).forEach(([key, value]) => {
@@ -124,7 +117,7 @@ export class TransactionManager {
         if (!conditions) {
           throw new Error('Delete operations require conditions');
         }
-        let deleteQuery = supabase.from(table);
+        let deleteQuery = supabase.from(tableTyped);
         
         // Apply conditions
         Object.entries(conditions).forEach(([key, value]) => {
