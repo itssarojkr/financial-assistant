@@ -50,7 +50,7 @@ export class AlertService {
         data: data ? {
           id: data.id,
           userId: data.user_id,
-          type: data.type || 'system',
+          type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
           threshold: data.threshold,
           period: data.period,
           active: data.active || true,
@@ -113,7 +113,7 @@ export class AlertService {
           type: updates.type,
           threshold: updates.threshold,
           period: updates.period,
-          active: updates.active,
+          active: updates.active ?? null,
           severity: updates.severity,
           currency: updates.currency,
           updated_at: new Date().toISOString(),

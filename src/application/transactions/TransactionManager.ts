@@ -1,43 +1,35 @@
+
+import { supabase } from '@/integrations/supabase/client';
 import { RepositoryFactory } from '@/infrastructure/database/repositories/RepositoryFactory';
 
-/**
- * Transaction context for managing database transactions
- */
-export interface TransactionContext {
+export interface Transaction {
   id: string;
-  startTime: Date;
-  status: 'active' | 'committed' | 'rolled_back' | 'failed';
-  operations: Array<{
-    type: string;
-    description: string;
-    timestamp: Date;
-  }>;
+  operations: TransactionOperation[];
+  status: 'pending' | 'committed' | 'rolled_back';
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface TransactionOperation {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  table: string;
+  data: any;
+  conditions?: Record<string, any>;
 }
 
 /**
- * Transaction result wrapper
- */
-export interface TransactionResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  transactionId: string;
-  duration: number;
-}
-
-/**
- * Transaction manager for handling complex business operations
+ * Transaction manager for handling complex multi-table operations
  * 
- * This class provides transaction support for operations that span
- * multiple repositories or require atomicity.
+ * This class provides transaction management capabilities to ensure
+ * data consistency across multiple database operations.
  */
 export class TransactionManager {
   private static instance: TransactionManager;
-  private repositoryFactory: RepositoryFactory;
-  private activeTransactions: Map<string, TransactionContext> = new Map();
 
   private constructor() {
-    this.repositoryFactory = RepositoryFactory.getInstance();
+    // Initialize repository factory but don't store reference since it's unused
+    RepositoryFactory.getInstance();
   }
 
   /**
@@ -51,142 +43,272 @@ export class TransactionManager {
   }
 
   /**
-   * Executes a function within a transaction context
+   * Executes operations within a transaction
    */
-  async executeInTransaction<T>(
-    operation: (context: TransactionContext) => Promise<T>,
-    description: string = 'Transaction'
-  ): Promise<TransactionResult<T>> {
-    const transactionId = this.generateTransactionId();
-    const startTime = new Date();
-    
-    const context: TransactionContext = {
-      id: transactionId,
-      startTime,
-      status: 'active',
-      operations: [],
+  async executeTransaction(operations: TransactionOperation[]): Promise<{ success: boolean; results: any[]; error?: any }> {
+    const transaction: Transaction = {
+      id: this.generateTransactionId(),
+      operations,
+      status: 'pending',
+      createdAt: new Date(),
     };
 
-    this.activeTransactions.set(transactionId, context);
-
     try {
-      // Log transaction start
-      this.logOperation(context, 'START', description);
+      const results: any[] = [];
 
-      // Execute the operation
-      const result = await operation(context);
+      // Start transaction
+      const { data, error } = await supabase.rpc('begin_transaction');
+      if (error) throw error;
 
-      // Commit transaction
-      await this.commitTransaction(context);
-
-      const duration = Date.now() - startTime.getTime();
-
-      return {
-        success: true,
-        data: result,
-        transactionId,
-        duration,
-      };
-    } catch (error) {
-      // Rollback transaction
-      await this.rollbackTransaction(context);
-
-      const duration = Date.now() - startTime.getTime();
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        transactionId,
-        duration,
-      };
-    } finally {
-      // Clean up
-      this.activeTransactions.delete(transactionId);
-    }
-  }
-
-  /**
-   * Executes multiple operations in a single transaction
-   */
-  async executeMultipleOperations<T>(
-    operations: Array<{
-      name: string;
-      operation: (context: TransactionContext) => Promise<unknown>;
-    }>
-  ): Promise<TransactionResult<T[]>> {
-    return this.executeInTransaction(async (context) => {
-      const results: T[] = [];
-
-      for (const { name, operation } of operations) {
-        try {
-          const result = await operation(context);
-          results.push(result as T);
-          this.logOperation(context, 'SUCCESS', name);
-        } catch (error) {
-          this.logOperation(context, 'FAILED', `${name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          throw error;
-        }
+      // Execute each operation
+      for (const operation of operations) {
+        const result = await this.executeOperation(operation);
+        results.push(result);
       }
 
-      return results;
-    }, `Multiple operations: ${operations.map(op => op.name).join(', ')}`);
-  }
+      // Commit transaction
+      const { error: commitError } = await supabase.rpc('commit_transaction');
+      if (commitError) throw commitError;
 
-  /**
-   * Gets transaction status
-   */
-  getTransactionStatus(transactionId: string): TransactionContext | null {
-    return this.activeTransactions.get(transactionId) || null;
-  }
+      transaction.status = 'committed';
+      transaction.completedAt = new Date();
 
-  /**
-   * Gets all active transactions
-   */
-  getActiveTransactions(): TransactionContext[] {
-    return Array.from(this.activeTransactions.values());
-  }
-
-  /**
-   * Commits a transaction
-   */
-  private async commitTransaction(context: TransactionContext): Promise<void> {
-    try {
-      // In a real implementation, this would commit the database transaction
-      // For now, we just update the status
-      context.status = 'committed';
-      this.logOperation(context, 'COMMIT', 'Transaction committed successfully');
+      return { success: true, results };
     } catch (error) {
-      context.status = 'failed';
-      this.logOperation(context, 'COMMIT_FAILED', `Commit failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
+      // Rollback transaction
+      try {
+        await supabase.rpc('rollback_transaction');
+      } catch (rollbackError) {
+        console.error('Failed to rollback transaction:', rollbackError);
+      }
+
+      transaction.status = 'rolled_back';
+      transaction.completedAt = new Date();
+
+      console.error('Transaction failed:', error);
+      return { success: false, results: [], error };
     }
   }
 
   /**
-   * Rollbacks a transaction
+   * Executes a single operation
    */
-  private async rollbackTransaction(context: TransactionContext): Promise<void> {
-    try {
-      // In a real implementation, this would rollback the database transaction
-      // For now, we just update the status
-      context.status = 'rolled_back';
-      this.logOperation(context, 'ROLLBACK', 'Transaction rolled back');
-    } catch (error) {
-      context.status = 'failed';
-      this.logOperation(context, 'ROLLBACK_FAILED', `Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Don't throw here as we're already in an error state
+  private async executeOperation(operation: TransactionOperation): Promise<any> {
+    const { type, table, data, conditions } = operation;
+
+    switch (type) {
+      case 'create':
+        const { data: createResult, error: createError } = await supabase
+          .from(table)
+          .insert(data)
+          .select();
+        if (createError) throw createError;
+        return createResult;
+
+      case 'update':
+        if (!conditions) {
+          throw new Error('Update operations require conditions');
+        }
+        let updateQuery = supabase.from(table).update(data);
+        
+        // Apply conditions
+        Object.entries(conditions).forEach(([key, value]) => {
+          updateQuery = updateQuery.eq(key, value);
+        });
+
+        const { data: updateResult, error: updateError } = await updateQuery.select();
+        if (updateError) throw updateError;
+        return updateResult;
+
+      case 'delete':
+        if (!conditions) {
+          throw new Error('Delete operations require conditions');
+        }
+        let deleteQuery = supabase.from(table);
+        
+        // Apply conditions
+        Object.entries(conditions).forEach(([key, value]) => {
+          deleteQuery = deleteQuery.eq(key, value);
+        });
+
+        const { data: deleteResult, error: deleteError } = await deleteQuery.delete();
+        if (deleteError) throw deleteError;
+        return deleteResult;
+
+      default:
+        throw new Error(`Unsupported operation type: ${type}`);
     }
   }
 
   /**
-   * Logs an operation within a transaction
+   * Creates a user with related data in a transaction
    */
-  private logOperation(context: TransactionContext, type: string, description: string): void {
-    context.operations.push({
-      type,
-      description,
-      timestamp: new Date(),
+  async createUserWithData(userData: {
+    email: string;
+    profile?: any;
+    preferences?: any;
+    initialData?: any[];
+  }): Promise<{ success: boolean; userId?: string; error?: any }> {
+    const operations: TransactionOperation[] = [];
+
+    // Add user creation operation
+    operations.push({
+      id: this.generateOperationId(),
+      type: 'create',
+      table: 'profiles',
+      data: {
+        email: userData.email,
+        ...userData.profile,
+      },
     });
+
+    // Add preferences creation if provided
+    if (userData.preferences) {
+      operations.push({
+        id: this.generateOperationId(),
+        type: 'create',
+        table: 'user_preferences',
+        data: userData.preferences,
+      });
+    }
+
+    // Add initial data operations if provided
+    if (userData.initialData) {
+      userData.initialData.forEach((dataItem, index) => {
+        operations.push({
+          id: this.generateOperationId(),
+          type: 'create',
+          table: 'user_data',
+          data: dataItem,
+        });
+      });
+    }
+
+    const result = await this.executeTransaction(operations);
+    
+    if (result.success && result.results.length > 0) {
+      return {
+        success: true,
+        userId: result.results[0]?.[0]?.id,
+      };
+    }
+
+    return {
+      success: false,
+      error: result.error,
+    };
+  }
+
+  /**
+   * Updates user and related data in a transaction
+   */
+  async updateUserWithData(userId: string, updates: {
+    profile?: any;
+    preferences?: any;
+    additionalData?: any[];
+  }): Promise<{ success: boolean; error?: any }> {
+    const operations: TransactionOperation[] = [];
+
+    // Add profile update if provided
+    if (updates.profile) {
+      operations.push({
+        id: this.generateOperationId(),
+        type: 'update',
+        table: 'profiles',
+        data: updates.profile,
+        conditions: { id: userId },
+      });
+    }
+
+    // Add preferences update if provided
+    if (updates.preferences) {
+      operations.push({
+        id: this.generateOperationId(),
+        type: 'update',
+        table: 'user_preferences',
+        data: updates.preferences,
+        conditions: { user_id: userId },
+      });
+    }
+
+    // Add additional data operations if provided
+    if (updates.additionalData) {
+      updates.additionalData.forEach((dataItem) => {
+        operations.push({
+          id: this.generateOperationId(),
+          type: 'create',
+          table: 'user_data',
+          data: {
+            ...dataItem,
+            user_id: userId,
+          },
+        });
+      });
+    }
+
+    const result = await this.executeTransaction(operations);
+    
+    return {
+      success: result.success,
+      error: result.error,
+    };
+  }
+
+  /**
+   * Deletes user and all related data in a transaction
+   */
+  async deleteUserWithData(userId: string): Promise<{ success: boolean; error?: any }> {
+    const operations: TransactionOperation[] = [
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'user_data',
+        data: {},
+        conditions: { user_id: userId },
+      },
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'user_preferences',
+        data: {},
+        conditions: { user_id: userId },
+      },
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'expenses',
+        data: {},
+        conditions: { user_id: userId },
+      },
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'budgets',
+        data: {},
+        conditions: { user_id: userId },
+      },
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'spending_alerts',
+        data: {},
+        conditions: { user_id: userId },
+      },
+      {
+        id: this.generateOperationId(),
+        type: 'delete',
+        table: 'profiles',
+        data: {},
+        conditions: { id: userId },
+      },
+    ];
+
+    const result = await this.executeTransaction(operations);
+    
+    return {
+      success: result.success,
+      error: result.error,
+    };
   }
 
   /**
@@ -197,19 +319,9 @@ export class TransactionManager {
   }
 
   /**
-   * Gets transaction statistics
+   * Generates a unique operation ID
    */
-  getTransactionStatistics(): {
-    activeTransactions: number;
-    totalTransactions: number;
-    averageDuration: number;
-  } {
-    const activeTransactions = this.activeTransactions.size;
-    // In a real implementation, you'd track total transactions and average duration
-    return {
-      activeTransactions,
-      totalTransactions: 0, // Would be tracked in a real implementation
-      averageDuration: 0, // Would be calculated in a real implementation
-    };
+  private generateOperationId(): string {
+    return `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-} 
+}

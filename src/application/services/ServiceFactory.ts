@@ -1,14 +1,10 @@
+
 import { RepositoryFactory } from '@/infrastructure/database/repositories/RepositoryFactory';
 import { UserService } from './UserService';
-import { ExpenseService } from './ExpenseService';
 import { TaxCalculationService } from './TaxCalculationService';
 import { BudgetService } from './BudgetService';
 import { AlertService } from './AlertService';
 import { AnalyticsService } from './AnalyticsService';
-import { UserRepository } from '@/infrastructure/database/repositories/UserRepository';
-import { ExpenseRepository } from '@/infrastructure/database/repositories/ExpenseRepository';
-import { BudgetRepository } from '@/infrastructure/database/repositories/BudgetRepository';
-import { AlertRepository } from '@/infrastructure/database/repositories/AlertRepository';
 
 /**
  * Service factory for managing and providing access to all application services
@@ -22,7 +18,6 @@ export class ServiceFactory {
   
   // Service instances
   private userService: UserService | null = null;
-  private expenseService: ExpenseService | null = null;
   private taxCalculationService: TaxCalculationService | null = null;
   private budgetService: BudgetService | null = null;
   private alertService: AlertService | null = null;
@@ -75,26 +70,6 @@ export class ServiceFactory {
   }
 
   /**
-   * Gets the expense service instance
-   */
-  getExpenseService(): ExpenseService {
-    if (!this.repositoryFactory.isInitialized()) {
-      throw new Error('Service factory not initialized. Call initialize() first.');
-    }
-
-    if (!this.expenseService) {
-      try {
-        const expenseRepository = this.repositoryFactory.getExpenseRepository();
-        this.expenseService = new ExpenseService(expenseRepository);
-      } catch (error) {
-        throw new Error('Expense service not available: Expense repository not implemented');
-      }
-    }
-
-    return this.expenseService;
-  }
-
-  /**
    * Gets the tax calculation service instance
    */
   getTaxCalculationService(): TaxCalculationService {
@@ -113,16 +88,14 @@ export class ServiceFactory {
   /**
    * Gets the budget service instance
    */
-  getBudgetService(
-    budgetRepository: BudgetRepository,
-    expenseService: ExpenseService
-  ): BudgetService {
+  getBudgetService(): BudgetService {
     if (!this.repositoryFactory.isInitialized()) {
       throw new Error('Service factory not initialized. Call initialize() first.');
     }
 
     if (!this.budgetService) {
-      this.budgetService = new BudgetService(budgetRepository, expenseService);
+      const budgetRepository = this.repositoryFactory.getBudgetRepository();
+      this.budgetService = new BudgetService(budgetRepository);
     }
 
     return this.budgetService;
@@ -131,13 +104,13 @@ export class ServiceFactory {
   /**
    * Gets the alert service instance
    */
-  getAlertService(alertRepository: AlertRepository): AlertService {
+  getAlertService(): AlertService {
     if (!this.repositoryFactory.isInitialized()) {
       throw new Error('Service factory not initialized. Call initialize() first.');
     }
 
     if (!this.alertService) {
-      this.alertService = new AlertService(alertRepository);
+      this.alertService = AlertService;
     }
 
     return this.alertService;
@@ -146,16 +119,13 @@ export class ServiceFactory {
   /**
    * Gets the analytics service instance
    */
-  getAnalyticsService(
-    expenseService: ExpenseService,
-    budgetService: BudgetService
-  ): AnalyticsService {
+  getAnalyticsService(): AnalyticsService {
     if (!this.repositoryFactory.isInitialized()) {
       throw new Error('Service factory not initialized. Call initialize() first.');
     }
 
     if (!this.analyticsService) {
-      this.analyticsService = new AnalyticsService(expenseService, budgetService);
+      this.analyticsService = AnalyticsService;
     }
 
     return this.analyticsService;
@@ -166,7 +136,6 @@ export class ServiceFactory {
    */
   getAllServices(): {
     userService: UserService;
-    expenseService?: ExpenseService;
     taxCalculationService: TaxCalculationService;
     budgetService?: BudgetService;
     alertService?: AlertService;
@@ -176,38 +145,31 @@ export class ServiceFactory {
       throw new Error('Service factory not initialized. Call initialize() first.');
     }
 
-    const services: unknown = {
+    const services = {
       userService: this.getUserService(),
       taxCalculationService: this.getTaxCalculationService(),
     };
 
     try {
-      services.expenseService = this.getExpenseService();
-    } catch (error) {
-      // Expense service not available
-    }
-
-    try {
-      services.budgetService = this.getBudgetService(this.repositoryFactory.getBudgetRepository(), this.getExpenseService());
+      (services as any).budgetService = this.getBudgetService();
     } catch (error) {
       // Budget service not available
     }
 
     try {
-      services.alertService = this.getAlertService(this.repositoryFactory.getAlertRepository());
+      (services as any).alertService = this.getAlertService();
     } catch (error) {
       // Alert service not available
     }
 
     try {
-      services.analyticsService = this.getAnalyticsService(this.getExpenseService(), this.getBudgetService(this.repositoryFactory.getBudgetRepository(), this.getExpenseService()));
+      (services as any).analyticsService = this.getAnalyticsService();
     } catch (error) {
       // Analytics service not available
     }
 
     return services as {
       userService: UserService;
-      expenseService?: ExpenseService;
       taxCalculationService: TaxCalculationService;
       budgetService?: BudgetService;
       alertService?: AlertService;
@@ -255,7 +217,7 @@ export class ServiceFactory {
       repositoryStatus: this.repositoryFactory.getStatus(),
       services: {
         user: this.userService !== null,
-        expense: this.expenseService !== null,
+        expense: false,
         taxCalculation: this.taxCalculationService !== null,
         budget: this.budgetService !== null,
         alert: this.alertService !== null,
@@ -269,7 +231,6 @@ export class ServiceFactory {
    */
   reset(): void {
     this.userService = null;
-    this.expenseService = null;
     this.taxCalculationService = null;
     this.budgetService = null;
     this.alertService = null;
@@ -308,14 +269,6 @@ export class ServiceFactory {
       errors.push(`UserService: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Check expense service
-    try {
-      this.getExpenseService();
-    } catch (error) {
-      missing.push('ExpenseService');
-      errors.push(`ExpenseService: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
     // Check tax calculation service
     try {
       this.getTaxCalculationService();
@@ -324,34 +277,10 @@ export class ServiceFactory {
       errors.push(`TaxCalculationService: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Check budget service
-    try {
-      this.getBudgetService(this.repositoryFactory.getBudgetRepository(), this.getExpenseService());
-    } catch (error) {
-      missing.push('BudgetService');
-      errors.push(`BudgetService: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    // Check alert service
-    try {
-      this.getAlertService(this.repositoryFactory.getAlertRepository());
-    } catch (error) {
-      missing.push('AlertService');
-      errors.push(`AlertService: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
-    // Check analytics service
-    try {
-      this.getAnalyticsService(this.getExpenseService(), this.getBudgetService(this.repositoryFactory.getBudgetRepository(), this.getExpenseService()));
-    } catch (error) {
-      missing.push('AnalyticsService');
-      errors.push(`AnalyticsService: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-
     return {
       valid: missing.length === 0,
       missing,
       errors,
     };
   }
-} 
+}

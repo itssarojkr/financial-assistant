@@ -1,83 +1,95 @@
-import { User } from '@/core/domain/entities/User';
 import { UserService } from './UserService';
+import { UserPreferences } from '@/core/domain/entities/UserPreferences';
 
-/**
- * Tax calculation result interface
- */
-export interface TaxCalculationResult {
-  grossIncome: number;
-  netIncome: number;
-  totalTax: number;
-  effectiveTaxRate: number;
-  taxBreakdown: {
-    federalTax: number;
-    stateTax: number;
-    localTax: number;
-    socialSecurity: number;
-    medicare: number;
-    otherTaxes: number;
-  };
-  deductions: {
-    standardDeduction: number;
-    itemizedDeductions: number;
-    totalDeductions: number;
-  };
-  credits: {
-    earnedIncomeCredit: number;
-    childTaxCredit: number;
-    otherCredits: number;
-    totalCredits: number;
-  };
-  marginalTaxRate: number;
-  taxBracket: {
-    bracket: string;
-    rate: number;
-    range: {
-      min: number;
-      max: number;
-    };
-  };
+export interface TaxRates {
+  federal: TaxBracket[];
+  state: TaxBracket[];
+  local: TaxBracket[];
 }
 
-/**
- * Tax calculation parameters
- */
+export interface TaxThresholds {
+  socialSecurityWageBase: number;
+  additionalMedicareTaxThreshold: number;
+}
+
+export interface DeductionLimits {
+  standardDeduction: number;
+  retirementContributionLimit: number;
+  hsaContributionLimit: number;
+  studentLoanInterestDeductionLimit: number;
+}
+
+export interface CreditAmounts {
+  childTaxCredit: number;
+  earnedIncomeCredit: number;
+  educationCredit: number;
+  retirementSavingsCredit: number;
+}
+
 export interface TaxCalculationParams {
   grossIncome: number;
   country: string;
   state?: string;
   city?: string;
-  filingStatus: 'single' | 'married' | 'head_of_household' | 'married_separate';
-  age: number;
-  dependents: number;
+  filingStatus?: 'single' | 'married' | 'head_of_household' | 'married_separate';
+  age?: number;
+  dependents?: number;
+  deductions?: {
+    standardDeduction?: number;
+    itemizedDeductions?: number;
+    retirementContributions?: number;
+    healthSavingsAccount?: number;
+    studentLoanInterest?: number;
+    charitableContributions?: number;
+  };
+  credits?: {
+    childTaxCredit?: number;
+    earnedIncomeCredit?: number;
+    educationCredits?: number;
+    retirementSaverCredit?: number;
+  };
+  year?: number;
+}
+
+export interface TaxCalculationResult {
+  grossIncome: number;
+  taxableIncome: number;
+  federalTax: number;
+  stateTax: number;
+  localTax: number;
+  socialSecurityTax: number;
+  medicareTax: number;
+  totalTax: number;
+  takeHomePay: number;
+  effectiveTaxRate: number;
+  marginalTaxRate: number;
+  breakdown: {
+    federal: TaxBracket[];
+    state: TaxBracket[];
+    local: TaxBracket[];
+  };
   deductions: {
-    standardDeduction: number;
-    itemizedDeductions: number;
-    retirementContributions: number;
-    healthSavingsAccount: number;
-    studentLoanInterest: number;
+    total: number;
+    breakdown: Record<string, number>;
   };
   credits: {
-    earnedIncomeCredit: number;
-    childTaxCredit: number;
-    educationCredits: number;
-    otherCredits: number;
+    total: number;
+    breakdown: Record<string, number>;
   };
-  additionalIncome: {
-    interest: number;
-    dividends: number;
-    capitalGains: number;
-    rentalIncome: number;
-    businessIncome: number;
-  };
-  year: number;
+}
+
+export interface TaxBracket {
+  rate: number;
+  min: number;
+  max: number;
+  taxAmount: number;
 }
 
 /**
- * Tax calculation service for orchestrating tax-related business logic
+ * Tax calculation service for computing tax obligations
  * 
- * This service coordinates tax calculations and implements
- * application-level tax management operations.
+ * This service provides comprehensive tax calculation capabilities
+ * for different countries, states, and localities.
  */
 export class TaxCalculationService {
   private readonly userService: UserService;
@@ -87,73 +99,67 @@ export class TaxCalculationService {
   }
 
   /**
-   * Calculates tax for a given set of parameters
+   * Calculates taxes for a given set of parameters
    */
-  async calculateTax(params: TaxCalculationParams): Promise<TaxCalculationResult> {
+  async calculateTaxes(params: TaxCalculationParams): Promise<TaxCalculationResult> {
     try {
       // Validate input parameters
       this.validateTaxCalculationParams(params);
 
-      // Calculate adjusted gross income
-      const adjustedGrossIncome = this.calculateAdjustedGrossIncome(params);
+      // Get tax brackets and rules for the jurisdiction
+      const taxRules = await this.getTaxRules(params.country, params.state || '', params.city || '');
 
       // Calculate deductions
       const deductions = this.calculateDeductions(params);
 
       // Calculate taxable income
-      const taxableIncome = Math.max(0, adjustedGrossIncome - deductions.totalDeductions);
+      const taxableIncome = Math.max(0, params.grossIncome - deductions.total);
 
-      // Calculate federal tax
-      const federalTax = this.calculateFederalTax(taxableIncome, params.filingStatus, params.year);
+      // Calculate federal taxes
+      const federalTax = this.calculateFederalTax(taxableIncome, params);
 
-      // Calculate state tax
-      const stateTax = params.state ? this.calculateStateTax(taxableIncome, params.state, params.year) : 0;
+      // Calculate state taxes
+      const stateTax = this.calculateStateTax(taxableIncome, params);
 
-      // Calculate local tax
-      const localTax = params.city ? this.calculateLocalTax(taxableIncome, params.city, params.year) : 0;
+      // Calculate local taxes
+      const localTax = this.calculateLocalTax(taxableIncome, params);
 
-      // Calculate social security and medicare
-      const socialSecurity = this.calculateSocialSecurity(params.grossIncome, params.year);
-      const medicare = this.calculateMedicare(params.grossIncome, params.year);
-
-      // Calculate other taxes
-      const otherTaxes = this.calculateOtherTaxes(params);
-
-      // Calculate total tax
-      const totalTax = federalTax + stateTax + localTax + socialSecurity + medicare + otherTaxes;
+      // Calculate payroll taxes
+      const socialSecurityTax = this.calculateSocialSecurityTax(params.grossIncome);
+      const medicareTax = this.calculateMedicareTax(params.grossIncome);
 
       // Calculate credits
-      const credits = this.calculateCredits(params, adjustedGrossIncome);
+      const credits = this.calculateCredits(params);
 
-      // Calculate final tax
-      const finalTax = Math.max(0, totalTax - credits.totalCredits);
+      // Calculate total tax
+      const totalTax = Math.max(0, federalTax + stateTax + localTax + socialSecurityTax + medicareTax - credits.total);
 
-      // Calculate net income
-      const netIncome = params.grossIncome - finalTax;
+      // Calculate take-home pay
+      const takeHomePay = params.grossIncome - totalTax;
 
-      // Calculate effective tax rate
-      const effectiveTaxRate = params.grossIncome > 0 ? (finalTax / params.grossIncome) * 100 : 0;
-
-      // Get tax bracket information
-      const taxBracket = this.getTaxBracket(taxableIncome, params.filingStatus, params.year);
+      // Calculate effective and marginal tax rates
+      const effectiveTaxRate = params.grossIncome > 0 ? (totalTax / params.grossIncome) * 100 : 0;
+      const marginalTaxRate = this.calculateMarginalTaxRate(params);
 
       return {
         grossIncome: params.grossIncome,
-        netIncome,
-        totalTax: finalTax,
+        taxableIncome,
+        federalTax,
+        stateTax,
+        localTax,
+        socialSecurityTax,
+        medicareTax,
+        totalTax,
+        takeHomePay,
         effectiveTaxRate,
-        taxBreakdown: {
-          federalTax,
-          stateTax,
-          localTax,
-          socialSecurity,
-          medicare,
-          otherTaxes,
+        marginalTaxRate,
+        breakdown: {
+          federal: this.getFederalTaxBrackets(taxableIncome, params),
+          state: this.getStateTaxBrackets(taxableIncome, params),
+          local: this.getLocalTaxBrackets(taxableIncome, params),
         },
         deductions,
         credits,
-        marginalTaxRate: taxBracket.rate,
-        taxBracket,
       };
     } catch (error) {
       throw new Error(`Tax calculation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -161,154 +167,30 @@ export class TaxCalculationService {
   }
 
   /**
-   * Calculates tax for a specific user
+   * Gets tax calculation for a specific user
    */
-  async calculateTaxForUser(userId: string, grossIncome: number, additionalParams?: Partial<TaxCalculationParams>): Promise<TaxCalculationResult> {
+  async calculateUserTaxes(userId: string, params: Omit<TaxCalculationParams, 'filingStatus' | 'dependents'>): Promise<TaxCalculationResult> {
     try {
       const user = await this.userService.getUserById(userId);
       if (!user) {
         throw new Error('User not found');
       }
 
-      // Get user's primary location
-      const location = user.getPrimaryLocation();
-      const [country, state, city] = this.parseLocation(location);
+      // Get user preferences for additional context
+      const userPreferences = await this.getUserPreferences(userId);
 
-      // Get user's preferences
-      const preferences = user.preferences;
-      const filingStatus = preferences?.taxRegime === 'old' ? 'single' : 'single'; // Default, could be enhanced
-
-      // Create tax calculation parameters
-      const params: TaxCalculationParams = {
-        grossIncome,
-        country: country || 'US',
-        state,
-        city,
-        filingStatus,
-        age: 30, // Default, could be enhanced with user profile
-        dependents: 0, // Default, could be enhanced with user profile
-        deductions: {
-          standardDeduction: 0,
-          itemizedDeductions: 0,
-          retirementContributions: 0,
-          healthSavingsAccount: 0,
-          studentLoanInterest: 0,
-        },
-        credits: {
-          earnedIncomeCredit: 0,
-          childTaxCredit: 0,
-          educationCredits: 0,
-          otherCredits: 0,
-        },
-        additionalIncome: {
-          interest: 0,
-          dividends: 0,
-          capitalGains: 0,
-          rentalIncome: 0,
-          businessIncome: 0,
-        },
-        year: new Date().getFullYear(),
-        ...additionalParams,
+      // Enhance params with user-specific data
+      const enhancedParams: TaxCalculationParams = {
+        ...params,
+        filingStatus: 'single', // Default, could be from user profile
+        dependents: 0, // Default, could be from user profile
+        state: params.state || '',
+        city: params.city || '',
       };
 
-      return await this.calculateTax(params);
+      return await this.calculateTaxes(enhancedParams);
     } catch (error) {
-      throw new Error(`Failed to calculate tax for user: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Compares tax scenarios
-   */
-  async compareTaxScenarios(
-    baseParams: TaxCalculationParams,
-    scenarios: Array<{
-      name: string;
-      params: Partial<TaxCalculationParams>;
-    }>
-  ): Promise<{
-    baseScenario: TaxCalculationResult;
-    scenarios: Array<{
-      name: string;
-      result: TaxCalculationResult;
-      difference: {
-        netIncome: number;
-        totalTax: number;
-        effectiveTaxRate: number;
-      };
-    }>;
-  }> {
-    try {
-      const baseScenario = await this.calculateTax(baseParams);
-      const scenarioResults = [];
-
-      for (const scenario of scenarios) {
-        const scenarioParams = { ...baseParams, ...scenario.params };
-        const result = await this.calculateTax(scenarioParams);
-
-        scenarioResults.push({
-          name: scenario.name,
-          result,
-          difference: {
-            netIncome: result.netIncome - baseScenario.netIncome,
-            totalTax: result.totalTax - baseScenario.totalTax,
-            effectiveTaxRate: result.effectiveTaxRate - baseScenario.effectiveTaxRate,
-          },
-        });
-      }
-
-      return {
-        baseScenario,
-        scenarios: scenarioResults,
-      };
-    } catch (error) {
-      throw new Error(`Failed to compare tax scenarios: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Gets tax optimization suggestions
-   */
-  async getTaxOptimizationSuggestions(userId: string, grossIncome: number): Promise<Array<{
-    category: string;
-    suggestion: string;
-    potentialSavings: number;
-    priority: 'high' | 'medium' | 'low';
-  }>> {
-    try {
-      const suggestions = [];
-
-      // Analyze retirement contributions
-      if (grossIncome > 50000) {
-        suggestions.push({
-          category: 'Retirement',
-          suggestion: 'Consider increasing 401(k) contributions to reduce taxable income',
-          potentialSavings: grossIncome * 0.22 * 0.01, // Rough estimate
-          priority: 'high' as const,
-        });
-      }
-
-      // Analyze health savings account
-      if (grossIncome > 40000) {
-        suggestions.push({
-          category: 'Healthcare',
-          suggestion: 'Consider contributing to an HSA for tax-free healthcare expenses',
-          potentialSavings: 3500 * 0.22, // Rough estimate
-          priority: 'medium' as const,
-        });
-      }
-
-      // Analyze itemized deductions
-      suggestions.push({
-        category: 'Deductions',
-        suggestion: 'Review if itemized deductions exceed standard deduction',
-        potentialSavings: 0, // Would need more analysis
-        priority: 'medium' as const,
-      });
-
-      return suggestions;
-    } catch (error) {
-      throw new Error(`Failed to get tax optimization suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`User tax calculation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -316,268 +198,290 @@ export class TaxCalculationService {
    * Validates tax calculation parameters
    */
   private validateTaxCalculationParams(params: TaxCalculationParams): void {
-    if (params.grossIncome < 0) {
-      throw new Error('Gross income cannot be negative');
+    if (!params.grossIncome || params.grossIncome < 0) {
+      throw new Error('Gross income is required and must be positive');
     }
 
     if (!params.country) {
       throw new Error('Country is required');
     }
 
-    if (params.age < 0 || params.age > 120) {
-      throw new Error('Invalid age');
+    if (params.age !== undefined && (params.age < 0 || params.age > 150)) {
+      throw new Error('Age must be between 0 and 150');
     }
 
-    if (params.dependents < 0) {
-      throw new Error('Number of dependents cannot be negative');
-    }
-
-    if (params.year < 2020 || params.year > new Date().getFullYear() + 1) {
-      throw new Error('Invalid tax year');
+    if (params.dependents !== undefined && params.dependents < 0) {
+      throw new Error('Dependents cannot be negative');
     }
   }
 
   /**
-   * Calculates adjusted gross income
+   * Gets user preferences (placeholder implementation)
    */
-  private calculateAdjustedGrossIncome(params: TaxCalculationParams): number {
-    let agi = params.grossIncome;
-
-    // Add additional income
-    agi += params.additionalIncome.interest;
-    agi += params.additionalIncome.dividends;
-    agi += params.additionalIncome.capitalGains;
-    agi += params.additionalIncome.rentalIncome;
-    agi += params.additionalIncome.businessIncome;
-
-    // Subtract above-the-line deductions
-    agi -= params.deductions.retirementContributions;
-    agi -= params.deductions.healthSavingsAccount;
-    agi -= params.deductions.studentLoanInterest;
-
-    return Math.max(0, agi);
+  private async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+    // This would typically call a preferences service
+    // For now, return null as a placeholder
+    return null;
   }
 
   /**
-   * Calculates deductions
+   * Gets tax rules for a jurisdiction
    */
-  private calculateDeductions(params: TaxCalculationParams): {
-    standardDeduction: number;
-    itemizedDeductions: number;
-    totalDeductions: number;
-  } {
-    const standardDeduction = this.getStandardDeduction(params.filingStatus, params.year);
-    const itemizedDeductions = params.deductions.itemizedDeductions;
-
-    const totalDeductions = Math.max(standardDeduction, itemizedDeductions);
-
+  private async getTaxRules(country: string, state: string, city: string): Promise<any> {
+    // This would typically fetch from a database or external service
+    // For now, return mock data
     return {
-      standardDeduction,
-      itemizedDeductions,
-      totalDeductions,
+      country,
+      state,
+      city,
+      federalBrackets: [],
+      stateBrackets: [],
+      localBrackets: [],
     };
   }
 
   /**
-   * Calculates federal tax (simplified)
+   * Calculates total deductions
    */
-  private calculateFederalTax(taxableIncome: number, filingStatus: string, year: number): number {
-    // This is a simplified calculation - in a real app, you'd use actual tax brackets
-    const brackets = this.getFederalTaxBrackets(filingStatus, year);
-    
-    let tax = 0;
-    let remainingIncome = taxableIncome;
+  private calculateDeductions(params: TaxCalculationParams): { total: number; breakdown: Record<string, number> } {
+    const breakdown: Record<string, number> = {};
+    let total = 0;
 
-    for (const bracket of brackets) {
-      if (remainingIncome <= 0) break;
+    if (params.deductions) {
+      if (params.deductions.standardDeduction) {
+        breakdown['Standard Deduction'] = params.deductions.standardDeduction;
+        total += params.deductions.standardDeduction;
+      }
 
-      const bracketAmount = Math.min(remainingIncome, bracket.max - bracket.min);
-      tax += bracketAmount * bracket.rate;
-      remainingIncome -= bracketAmount;
+      if (params.deductions.itemizedDeductions) {
+        breakdown['Itemized Deductions'] = params.deductions.itemizedDeductions;
+        total += params.deductions.itemizedDeductions;
+      }
+
+      if (params.deductions.retirementContributions) {
+        breakdown['Retirement Contributions'] = params.deductions.retirementContributions;
+        total += params.deductions.retirementContributions;
+      }
+
+      if (params.deductions.healthSavingsAccount) {
+        breakdown['Health Savings Account'] = params.deductions.healthSavingsAccount;
+        total += params.deductions.healthSavingsAccount;
+      }
+
+      if (params.deductions.studentLoanInterest) {
+        breakdown['Student Loan Interest'] = params.deductions.studentLoanInterest;
+        total += params.deductions.studentLoanInterest;
+      }
+
+      if (params.deductions.charitableContributions) {
+        breakdown['Charitable Contributions'] = params.deductions.charitableContributions;
+        total += params.deductions.charitableContributions;
+      }
     }
 
-    return tax;
+    return { total, breakdown };
   }
 
   /**
-   * Calculates state tax (simplified)
+   * Calculates federal tax
    */
-  private calculateStateTax(taxableIncome: number, state: string, year: number): number {
-    // Simplified state tax calculation
-    const stateTaxRates: Record<string, number> = {
-      'CA': 0.075,
-      'NY': 0.0685,
+  private calculateFederalTax(taxableIncome: number, params: TaxCalculationParams): number {
+    // This would use actual federal tax brackets
+    // For now, return a simple calculation
+    return taxableIncome * 0.22; // Simplified 22% rate
+  }
+
+  /**
+   * Calculates state tax
+   */
+  private calculateStateTax(taxableIncome: number, params: TaxCalculationParams): number {
+    // This would use actual state tax brackets
+    // For now, return a simple calculation based on state
+    const stateRates: Record<string, number> = {
+      'CA': 0.09,
+      'NY': 0.08,
       'TX': 0,
       'FL': 0,
-      // Add more states as needed
     };
 
-    const rate = stateTaxRates[state.toUpperCase()] || 0.05; // Default 5%
+    const rate = stateRates[params.state || ''] || 0.05;
     return taxableIncome * rate;
   }
 
   /**
-   * Calculates local tax (simplified)
+   * Calculates local tax
    */
-  private calculateLocalTax(taxableIncome: number, city: string, year: number): number {
-    // Simplified local tax calculation
-    return taxableIncome * 0.02; // Default 2%
+  private calculateLocalTax(taxableIncome: number, params: TaxCalculationParams): number {
+    // This would use actual local tax rates
+    // For now, return a simple calculation
+    return taxableIncome * 0.01; // Simplified 1% rate
   }
 
   /**
-   * Calculates social security tax
+   * Calculates Social Security tax
    */
-  private calculateSocialSecurity(income: number, year: number): number {
+  private calculateSocialSecurityTax(grossIncome: number): number {
     const socialSecurityWageBase = 160200; // 2023 limit
-    const socialSecurityRate = 0.062; // 6.2%
+    const socialSecurityRate = 0.062;
     
-    return Math.min(income, socialSecurityWageBase) * socialSecurityRate;
+    return Math.min(grossIncome, socialSecurityWageBase) * socialSecurityRate;
   }
 
   /**
-   * Calculates medicare tax
+   * Calculates Medicare tax
    */
-  private calculateMedicare(income: number, year: number): number {
-    const medicareRate = 0.0145; // 1.45%
-    return income * medicareRate;
-  }
+  private calculateMedicareTax(grossIncome: number): number {
+    const medicareTaxRate = 0.0145;
+    const additionalMedicareThreshold = 200000;
+    const additionalMedicareRate = 0.009;
 
-  /**
-   * Calculates other taxes
-   */
-  private calculateOtherTaxes(params: TaxCalculationParams): number {
-    // Simplified calculation for other taxes
-    return 0;
+    let medicareTax = grossIncome * medicareTaxRate;
+
+    if (grossIncome > additionalMedicareThreshold) {
+      medicareTax += (grossIncome - additionalMedicareThreshold) * additionalMedicareRate;
+    }
+
+    return medicareTax;
   }
 
   /**
    * Calculates tax credits
    */
-  private calculateCredits(params: TaxCalculationParams, adjustedGrossIncome: number): {
-    earnedIncomeCredit: number;
-    childTaxCredit: number;
-    otherCredits: number;
-    totalCredits: number;
-  } {
-    const earnedIncomeCredit = this.calculateEarnedIncomeCredit(adjustedGrossIncome, params.dependents);
-    const childTaxCredit = this.calculateChildTaxCredit(params.dependents, adjustedGrossIncome);
-    const otherCredits = params.credits.otherCredits;
+  private calculateCredits(params: TaxCalculationParams): { total: number; breakdown: Record<string, number> } {
+    const breakdown: Record<string, number> = {};
+    let total = 0;
 
-    const totalCredits = earnedIncomeCredit + childTaxCredit + otherCredits;
+    if (params.credits) {
+      if (params.credits.childTaxCredit) {
+        breakdown['Child Tax Credit'] = params.credits.childTaxCredit;
+        total += params.credits.childTaxCredit;
+      }
 
-    return {
-      earnedIncomeCredit,
-      childTaxCredit,
-      otherCredits,
-      totalCredits,
-    };
-  }
+      if (params.credits.earnedIncomeCredit) {
+        breakdown['Earned Income Credit'] = params.credits.earnedIncomeCredit;
+        total += params.credits.earnedIncomeCredit;
+      }
 
-  /**
-   * Calculates earned income credit (simplified)
-   */
-  private calculateEarnedIncomeCredit(adjustedGrossIncome: number, dependents: number): number {
-    // Simplified EIC calculation
-    if (adjustedGrossIncome < 15000 && dependents > 0) {
-      return 1000 * dependents;
+      if (params.credits.educationCredits) {
+        breakdown['Education Credits'] = params.credits.educationCredits;
+        total += params.credits.educationCredits;
+      }
+
+      if (params.credits.retirementSaverCredit) {
+        breakdown['Retirement Saver Credit'] = params.credits.retirementSaverCredit;
+        total += params.credits.retirementSaverCredit;
+      }
     }
-    return 0;
+
+    return { total, breakdown };
   }
 
   /**
-   * Calculates child tax credit (simplified)
+   * Calculates marginal tax rate
    */
-  private calculateChildTaxCredit(dependents: number, adjustedGrossIncome: number): number {
-    // Simplified child tax credit calculation
-    if (adjustedGrossIncome < 200000) {
-      return 2000 * dependents;
-    }
-    return 0;
+  private calculateMarginalTaxRate(params: TaxCalculationParams): number {
+    // This would calculate the actual marginal rate
+    // For now, return a simplified rate
+    return 22; // Simplified 22% marginal rate
   }
 
   /**
-   * Gets standard deduction for filing status and year
+   * Gets federal tax brackets
    */
-  private getStandardDeduction(filingStatus: string, year: number): number {
-    const deductions: Record<string, number> = {
-      single: 13850,
-      married: 27700,
-      head_of_household: 20800,
-      married_separate: 13850,
-    };
-
-    return deductions[filingStatus] || 13850;
-  }
-
-  /**
-   * Gets federal tax brackets (simplified)
-   */
-  private getFederalTaxBrackets(filingStatus: string, year: number): Array<{
-    min: number;
-    max: number;
-    rate: number;
-  }> {
-    // Simplified 2023 tax brackets for single filers
+  private getFederalTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+    // This would return actual federal tax brackets
+    // For now, return mock data
     return [
-      { min: 0, max: 11000, rate: 0.10 },
-      { min: 11000, max: 44725, rate: 0.12 },
-      { min: 44725, max: 95375, rate: 0.22 },
-      { min: 95375, max: 182100, rate: 0.24 },
-      { min: 182100, max: 231250, rate: 0.32 },
-      { min: 231250, max: 578125, rate: 0.35 },
-      { min: 578125, max: Infinity, rate: 0.37 },
+      { rate: 10, min: 0, max: 10275, taxAmount: Math.min(taxableIncome, 10275) * 0.10 },
+      { rate: 12, min: 10275, max: 41775, taxAmount: Math.max(0, Math.min(taxableIncome - 10275, 31500)) * 0.12 },
+      { rate: 22, min: 41775, max: 89450, taxAmount: Math.max(0, Math.min(taxableIncome - 41775, 47675)) * 0.22 },
     ];
   }
 
   /**
-   * Gets tax bracket information
+   * Gets state tax brackets
    */
-  private getTaxBracket(taxableIncome: number, filingStatus: string, year: number): {
-    bracket: string;
-    rate: number;
-    range: {
-      min: number;
-      max: number;
-    };
-  } {
-    const brackets = this.getFederalTaxBrackets(filingStatus, year);
-    
-    for (const bracket of brackets) {
-      if (taxableIncome >= bracket.min && taxableIncome <= bracket.max) {
-        return {
-          bracket: `${bracket.rate * 100}%`,
-          rate: bracket.rate,
-          range: {
-            min: bracket.min,
-            max: bracket.max,
-          },
-        };
-      }
-    }
-
-    return {
-      bracket: '37%',
-      rate: 0.37,
-      range: { min: 578125, max: Infinity },
-    };
+  private getStateTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+    // This would return actual state tax brackets
+    // For now, return mock data
+    return [];
   }
 
   /**
-   * Parses location string into country, state, and city
+   * Gets local tax brackets
    */
-  private parseLocation(location?: string): [string?, string?, string?] {
-    if (!location) return [undefined, undefined, undefined];
-
-    const parts = location.split(',').map(part => part.trim());
-    
-    if (parts.length === 1) {
-      return [parts[0], undefined, undefined];
-    } else if (parts.length === 2) {
-      return [parts[1], parts[0], undefined];
-    } else if (parts.length >= 3) {
-      return [parts[2], parts[1], parts[0]];
-    }
-
-    return [undefined, undefined, undefined];
+  private getLocalTaxBrackets(taxableIncome: number, params: TaxCalculationParams): TaxBracket[] {
+    // This would return actual local tax brackets
+    // For now, return mock data
+    return [];
   }
-} 
+
+  /**
+   * Estimates quarterly tax payments
+   */
+  async estimateQuarterlyPayments(userId: string, annualIncome: number): Promise<number> {
+    try {
+      const taxResult = await this.calculateUserTaxes(userId, {
+        grossIncome: annualIncome,
+        country: 'US', // Default to US
+      });
+
+      // Quarterly payment is typically 25% of annual tax
+      return taxResult.totalTax / 4;
+    } catch (error) {
+      throw new Error(`Quarterly payment estimation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Compares tax scenarios
+   */
+  async compareTaxScenarios(scenarios: TaxCalculationParams[]): Promise<TaxCalculationResult[]> {
+    try {
+      const results = await Promise.all(
+        scenarios.map(scenario => this.calculateTaxes(scenario))
+      );
+
+      return results;
+    } catch (error) {
+      throw new Error(`Tax scenario comparison failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Gets tax optimization suggestions
+   */
+  async getTaxOptimizationSuggestions(params: TaxCalculationParams): Promise<string[]> {
+    const suggestions: string[] = [];
+
+    try {
+      // Analyze current situation and provide suggestions
+      if (params.grossIncome > 100000 && (!params.deductions?.retirementContributions || params.deductions.retirementContributions < 22500)) {
+        suggestions.push('Consider maximizing your 401(k) contributions to reduce taxable income');
+      }
+
+      if (params.deductions?.itemizedDeductions && params.deductions.itemizedDeductions < 12950) {
+        suggestions.push('Consider taking the standard deduction instead of itemizing');
+      }
+
+      if (params.grossIncome > 200000 && !params.deductions?.healthSavingsAccount) {
+        suggestions.push('Consider contributing to a Health Savings Account (HSA) for tax savings');
+      }
+
+      return suggestions;
+    } catch (error) {
+      throw new Error(`Tax optimization analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Formats location components for display
+   */
+  private formatLocationComponents(country?: string, state?: string, city?: string): [string, string, string] {
+    return [
+      country || '',
+      state || '',
+      city || ''
+    ];
+  }
+}

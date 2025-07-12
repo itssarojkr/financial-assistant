@@ -20,12 +20,7 @@ export class PreferencesService {
         theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
         language: data.language || 'en',
         currency: data.default_currency || 'USD',
-        notifications: {
-          email: true,
-          push: true,
-          sms: false,
-          ...(typeof data.notifications === 'object' ? data.notifications : {})
-        },
+        notifications: this.parseNotifications(data.notifications),
         smsScanning: data.sms_scanning_enabled || false,
         createdAt: new Date(data.created_at || new Date()),
         updatedAt: new Date(data.updated_at || new Date()),
@@ -72,12 +67,7 @@ export class PreferencesService {
         theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
         language: data.language || 'en',
         currency: data.default_currency || 'USD',
-        notifications: {
-          email: true,
-          push: true,
-          sms: false,
-          ...(typeof data.notifications === 'object' ? data.notifications : {})
-        },
+        notifications: this.parseNotifications(data.notifications),
         smsScanning: Boolean(data.sms_scanning_enabled),
         createdAt: new Date(data.created_at || ''),
         updatedAt: new Date(data.updated_at || ''),
@@ -88,5 +78,16 @@ export class PreferencesService {
       console.error('Error updating user preferences:', error);
       return { data: null, error };
     }
+  }
+
+  private static parseNotifications(notifications: any): { email: boolean; push: boolean; sms: boolean } {
+    if (notifications && typeof notifications === 'object' && !Array.isArray(notifications)) {
+      return {
+        email: Boolean(notifications.email),
+        push: Boolean(notifications.push),
+        sms: Boolean(notifications.sms)
+      };
+    }
+    return { email: true, push: true, sms: false };
   }
 }

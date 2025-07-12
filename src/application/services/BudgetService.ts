@@ -1,7 +1,6 @@
 
 import { Budget } from '@/core/domain/entities/Budget';
 import { BudgetRepository } from '@/infrastructure/database/repositories/BudgetRepository';
-import { ExpenseService } from './ExpenseService';
 import { PaginationParams, PaginatedResult } from '@/infrastructure/database/repositories/BaseRepository';
 
 /**

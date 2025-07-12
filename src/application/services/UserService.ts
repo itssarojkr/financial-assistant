@@ -1,4 +1,5 @@
-import { User } from '@/core/domain/entities/User';
+
+import { User, CreateUserParams } from '@/core/domain/entities/User';
 import { UserProfile } from '@/core/domain/entities/UserProfile';
 import { UserPreferences } from '@/core/domain/entities/UserPreferences';
 import { UserRepository } from '@/infrastructure/database/repositories/UserRepository';
@@ -33,9 +34,11 @@ export class UserService {
       const userId = this.generateUserId();
 
       // Create user with domain logic
-      const createParams: unknown = { email };
-      if (profile) createParams.profile = profile;
-      if (preferences) createParams.preferences = preferences;
+      const createParams: CreateUserParams = { 
+        email,
+        profile: profile || undefined,
+        preferences: preferences || undefined
+      };
 
       const user = User.create(createParams, userId);
 
@@ -308,4 +311,4 @@ export class UserService {
   private generateUserId(): string {
     return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-} 
+}

@@ -1,9 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Expense } from '@/core/domain/entities/Expense';
 
 export class AnalyticsService {
   static async getExpenseAnalytics(userId: string, timeRange: 'week' | 'month' | 'year' = 'month') {
-    
+    console.log('Getting expense analytics for user:', userId, 'timeRange:', timeRange);
     
     try {
       const { data, error } = await supabase
