@@ -1,17 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export interface Budget {
   id: string;
   user_id: string;
   amount: number;
-  currency: string;
+  currency: string | null;
   period: string;
-  category_id?: number;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
-  updated_at: string;
+  category_id?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CreateBudgetData {
@@ -19,20 +20,39 @@ export interface CreateBudgetData {
   amount: number;
   currency: string;
   period: string;
-  categoryId?: number;
-  startDate?: string;
-  endDate?: string;
+  categoryId?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface ExpenseCategory {
   id: number;
   name: string;
-  color?: string;
-  icon?: string;
+  color?: string | null;
+  icon?: string | null;
+}
+
+export interface BudgetServiceError {
+  message: string;
+  code?: string | undefined;
+  details?: string | undefined;
+}
+
+export interface BudgetServiceResponse<T> {
+  data: T | null;
+  error: BudgetServiceError | PostgrestError | null;
+}
+
+export interface BudgetAnalysis {
+  budget: Budget;
+  totalSpent: number;
+  remaining: number;
+  percentageUsed: number;
+  isOverBudget: boolean;
 }
 
 export class BudgetService {
-  static async createBudget(data: CreateBudgetData): Promise<{ data: Budget | null; error: any }> {
+  static async createBudget(data: CreateBudgetData): Promise<BudgetServiceResponse<Budget>> {
     try {
       const { data: budget, error } = await supabase
         .from('budgets')
@@ -41,20 +61,28 @@ export class BudgetService {
           amount: data.amount,
           currency: data.currency,
           period: data.period,
-          category_id: data.categoryId,
-          start_date: data.startDate,
-          end_date: data.endDate,
+          category_id: data.categoryId ?? null,
+          start_date: data.startDate ?? null,
+          end_date: data.endDate ?? null,
         })
         .select()
         .single();
 
-      return { data: budget, error };
+      if (error) throw error;
+
+      return { data: budget, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error creating budget:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getUserBudgets(userId: string): Promise<{ data: Budget[] | null; error: any }> {
+  static async getUserBudgets(userId: string): Promise<BudgetServiceResponse<Budget[]>> {
     try {
       const { data, error } = await supabase
         .from('budgets')
@@ -62,62 +90,97 @@ export class BudgetService {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error fetching budgets:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async updateBudget(id: string, updates: Partial<CreateBudgetData>): Promise<{ data: Budget | null; error: any }> {
+  static async updateBudget(id: string, updates: Partial<CreateBudgetData>): Promise<BudgetServiceResponse<Budget>> {
     try {
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.currency !== undefined) updateData.currency = updates.currency;
+      if (updates.period !== undefined) updateData.period = updates.period;
+      if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId;
+      if (updates.startDate !== undefined) updateData.start_date = updates.startDate;
+      if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+
       const { data, error } = await supabase
         .from('budgets')
-        .update({
-          amount: updates.amount,
-          currency: updates.currency,
-          period: updates.period,
-          category_id: updates.categoryId,
-          start_date: updates.startDate,
-          end_date: updates.endDate,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error updating budget:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async deleteBudget(id: string): Promise<{ data: any; error: any }> {
+  static async deleteBudget(id: string): Promise<BudgetServiceResponse<{ success: boolean }>> {
     try {
       const { data, error } = await supabase
         .from('budgets')
         .delete()
         .eq('id', id);
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data: { success: true }, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error deleting budget:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getExpenseCategories(): Promise<{ data: ExpenseCategory[] | null; error: any }> {
+  static async getExpenseCategories(): Promise<BudgetServiceResponse<ExpenseCategory[]>> {
     try {
       const { data, error } = await supabase
         .from('expense_categories')
         .select('*')
         .order('name');
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error fetching expense categories:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getBudgetVsActual(userId: string, period: string = 'monthly'): Promise<{ data: any; error: any }> {
+  static async getBudgetVsActual(userId: string, period: string = 'monthly'): Promise<BudgetServiceResponse<BudgetAnalysis[]>> {
     try {
       // Get budgets for the user
       const { data: budgets, error: budgetError } = await supabase
@@ -153,11 +216,17 @@ export class BudgetService {
           percentageUsed,
           isOverBudget: totalSpent > budget.amount
         };
-      });
+      }) || [];
 
       return { data: budgetAnalysis, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error calculating budget vs actual:', error);
+      const serviceError: BudgetServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 }

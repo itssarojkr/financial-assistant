@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, CreateExpenseParams } from '@/core/domain/entities/Expense';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export interface ExpenseWithCategory {
   id: string;
@@ -19,8 +20,47 @@ export interface ExpenseWithCategory {
   } | null;
 }
 
+export interface ExpenseData {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string | null;
+  description: string | null;
+  category_id: number | null;
+  date: string;
+  location: string | null;
+  source: string | null;
+  calculation_id: string | null;
+  created_at: string | null;
+}
+
+export interface ExpenseServiceError {
+  message: string;
+  code?: string | undefined;
+  details?: string | undefined;
+}
+
+export interface ExpenseServiceResponse<T> {
+  data: T | null;
+  error: ExpenseServiceError | PostgrestError | null;
+}
+
+export interface ExpenseSummary {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string | null;
+  description: string | null;
+  date: string;
+  expense_categories?: {
+    id: number;
+    name: string;
+    color: string | null;
+  } | null;
+}
+
 export class ExpenseService {
-  static async createExpense(params: CreateExpenseParams): Promise<{ data: Expense | null; error: any }> {
+  static async createExpense(params: CreateExpenseParams): Promise<ExpenseServiceResponse<Expense>> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -43,11 +83,16 @@ export class ExpenseService {
       };
     } catch (error) {
       console.error('Error creating expense:', error);
-      return { data: null, error };
+      const serviceError: ExpenseServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getExpenseById(id: string): Promise<{ data: Expense | null; error: any }> {
+  static async getExpenseById(id: string): Promise<ExpenseServiceResponse<Expense>> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -63,11 +108,16 @@ export class ExpenseService {
       };
     } catch (error) {
       console.error('Error fetching expense by ID:', error);
-      return { data: null, error };
+      const serviceError: ExpenseServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getExpensesByUserId(userId: string): Promise<{ data: Expense[] | null; error: any }> {
+  static async getExpensesByUserId(userId: string): Promise<ExpenseServiceResponse<Expense[]>> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -83,11 +133,16 @@ export class ExpenseService {
       };
     } catch (error) {
       console.error('Error fetching expenses by user ID:', error);
-      return { data: null, error };
+      const serviceError: ExpenseServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getExpensesSummary(userId: string): Promise<any> {
+  static async getExpensesSummary(userId: string): Promise<ExpenseSummary[]> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -105,8 +160,13 @@ export class ExpenseService {
       if (error) throw error;
 
       return data?.map(expense => ({
-        ...expense,
-        currency: expense.currency || 'USD',
+        id: expense.id,
+        user_id: expense.user_id,
+        amount: expense.amount,
+        currency: expense.currency,
+        description: expense.description,
+        date: expense.date,
+        expense_categories: expense.expense_categories,
       })) || [];
     } catch (error) {
       console.error('Error fetching expenses summary:', error);
@@ -114,23 +174,30 @@ export class ExpenseService {
     }
   }
 
-  static async deleteExpense(id: string): Promise<{ data: any; error: any }> {
+  static async deleteExpense(id: string): Promise<ExpenseServiceResponse<{ success: boolean }>> {
     try {
       const { data, error } = await supabase
         .from('expenses')
         .delete()
         .eq('id', id);
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data: { success: true }, error: null };
     } catch (error) {
       console.error('Error deleting expense:', error);
-      return { data: null, error };
+      const serviceError: ExpenseServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async updateExpense(id: string, updates: Partial<Expense>): Promise<{ data: any; error: any }> {
+  static async updateExpense(id: string, updates: Partial<Expense>): Promise<ExpenseServiceResponse<Expense>> {
     try {
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
 
       if (updates.amount !== undefined) updateData.amount = updates.amount;
       if (updates.currency !== undefined) updateData.currency = updates.currency;
@@ -145,10 +212,17 @@ export class ExpenseService {
         .select()
         .single();
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data: data ? this.mapToExpense(data) : null, error: null };
     } catch (error) {
       console.error('Error updating expense:', error);
-      return { data: null, error };
+      const serviceError: ExpenseServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
@@ -160,18 +234,18 @@ export class ExpenseService {
     return amount > 0 && amount <= maxAmount;
   }
 
-  private static mapToExpense(data: any): Expense {
+  private static mapToExpense(data: ExpenseData): Expense {
     return {
       id: data.id,
       userId: data.user_id,
       amount: data.amount,
-      currency: data.currency,
+      currency: data.currency || 'USD',
       description: data.description || '',
-      category: data.category || 'other',
+      category: data.category_id?.toString() || 'other',
       date: new Date(data.date),
       calculationId: data.calculation_id,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at || data.created_at),
+      createdAt: new Date(data.created_at || new Date()),
+      updatedAt: new Date(data.created_at || new Date()),
     };
   }
 }

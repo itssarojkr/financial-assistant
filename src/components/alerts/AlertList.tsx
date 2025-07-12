@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { AlertService, CreateAlertData, SpendingAlert } from '@/application/services/AlertService';
+import { PostgrestError } from '@supabase/supabase-js';
 
 interface AlertListProps {
   onCreateAlert: (alert: CreateAlertData) => void;
@@ -45,7 +46,7 @@ export function AlertList({ onCreateAlert }: AlertListProps) {
           variant: "destructive",
         });
       } else {
-        setAlerts(data as SpendingAlert[] || []);
+        setAlerts((data as unknown) as SpendingAlert[] || []);
       }
     } catch (error) {
       toast({
@@ -72,10 +73,11 @@ export function AlertList({ onCreateAlert }: AlertListProps) {
       
       loadAlerts();
       onCreateAlert(alertData);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast({
         title: "Error creating alert",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -92,10 +94,11 @@ export function AlertList({ onCreateAlert }: AlertListProps) {
       });
       
       loadAlerts();
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast({
         title: "Error deleting alert",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }

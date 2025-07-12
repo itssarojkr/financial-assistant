@@ -78,8 +78,7 @@ export class ServiceFactory {
     }
 
     if (!this.taxCalculationService) {
-      const userService = this.getUserService();
-      this.taxCalculationService = new TaxCalculationService(userService);
+      this.taxCalculationService = TaxCalculationService;
     }
 
     return this.taxCalculationService;
@@ -94,8 +93,7 @@ export class ServiceFactory {
     }
 
     if (!this.budgetService) {
-      const budgetRepository = this.repositoryFactory.getBudgetRepository();
-      this.budgetService = new BudgetService(budgetRepository);
+      this.budgetService = BudgetService;
     }
 
     return this.budgetService;
@@ -145,36 +143,36 @@ export class ServiceFactory {
       throw new Error('Service factory not initialized. Call initialize() first.');
     }
 
-    const services = {
-      userService: this.getUserService(),
-      taxCalculationService: this.getTaxCalculationService(),
-    };
-
-    try {
-      (services as any).budgetService = this.getBudgetService();
-    } catch (error) {
-      // Budget service not available
-    }
-
-    try {
-      (services as any).alertService = this.getAlertService();
-    } catch (error) {
-      // Alert service not available
-    }
-
-    try {
-      (services as any).analyticsService = this.getAnalyticsService();
-    } catch (error) {
-      // Analytics service not available
-    }
-
-    return services as {
+    const services: {
       userService: UserService;
       taxCalculationService: TaxCalculationService;
       budgetService?: BudgetService;
       alertService?: AlertService;
       analyticsService?: AnalyticsService;
+    } = {
+      userService: this.getUserService(),
+      taxCalculationService: this.getTaxCalculationService(),
     };
+
+    try {
+      services.budgetService = this.getBudgetService();
+    } catch (error) {
+      // Budget service not available
+    }
+
+    try {
+      services.alertService = this.getAlertService();
+    } catch (error) {
+      // Alert service not available
+    }
+
+    try {
+      services.analyticsService = this.getAnalyticsService();
+    } catch (error) {
+      // Analytics service not available
+    }
+
+    return services;
   }
 
   /**

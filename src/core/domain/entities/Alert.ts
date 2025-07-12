@@ -15,7 +15,7 @@ export class Alert {
     public readonly currency?: string,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
-    public readonly metadata?: Record<string, any>
+    public readonly metadata?: Record<string, unknown>
   ) {}
 
   static create(params: {
@@ -30,7 +30,7 @@ export class Alert {
     period?: string;
     active?: boolean;
     currency?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }, id?: string): Alert {
     return new Alert(
       id || crypto.randomUUID(),

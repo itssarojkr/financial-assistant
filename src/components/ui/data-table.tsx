@@ -24,7 +24,7 @@ export interface Column<T> {
   key: keyof T;
   title: string;
   sortable?: boolean;
-  render?: (value: any, item: T) => React.ReactNode;
+  render?: (value: unknown, item: T) => React.ReactNode;
   width?: string;
 }
 
@@ -44,7 +44,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
 }
 
-export function DataTable<T>({
+export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   searchable = false,
@@ -83,7 +83,7 @@ export function DataTable<T>({
 
   const filteredData = searchable
     ? data.filter(item =>
-        Object.values(item as any).some(value =>
+        Object.values(item).some(value =>
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
       )
@@ -139,8 +139,8 @@ export function DataTable<T>({
                   {columns.map((column) => (
                     <TableCell key={String(column.key)}>
                       {column.render
-                        ? column.render((item as any)[column.key], item)
-                        : String((item as any)[column.key] || '')
+                        ? column.render(item[column.key], item)
+                        : String(item[column.key] || '')
                       }
                     </TableCell>
                   ))}

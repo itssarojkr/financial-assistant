@@ -1,5 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { PostgrestError } from '@supabase/supabase-js';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface TaxCalculationResult {
   federalTax: number;
@@ -33,6 +35,37 @@ export interface TaxCalculationParams {
   filingStatus?: string;
   state?: string;
   deductions?: number;
+}
+
+export interface TaxCalculationMetadata {
+  country: string;
+  currency: string;
+  regime?: string;
+  filingStatus?: string;
+  state?: string;
+  deductions?: number;
+  calculatedAt: string;
+}
+
+export interface TaxCalculationData {
+  id: string;
+  user_id: string;
+  data_type: string;
+  data_name: string;
+  data_content: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface TaxCalculationServiceError {
+  message: string;
+  code?: string | undefined;
+  details?: string | undefined;
+}
+
+export interface TaxCalculationServiceResponse<T> {
+  data: T | null;
+  error: TaxCalculationServiceError | PostgrestError | null;
 }
 
 export class TaxCalculationService {
@@ -203,16 +236,13 @@ export class TaxCalculationService {
     }
 
     const provincialTax = this.getProvincialTax(salary, province);
-    const cpp = Math.min((salary - 3500) * 0.0595, 3754.45);
-    const ei = Math.min(salary * 0.0163, 1002.45);
-    
-    const totalTax = federalTax + provincialTax + cpp + ei;
+    const totalTax = federalTax + provincialTax;
 
     return {
       federalTax,
       stateTax: provincialTax,
-      socialSecurity: cpp,
-      medicare: ei,
+      socialSecurity: 0,
+      medicare: 0,
       totalTax,
       takeHomeSalary: salary - totalTax,
       taxableIncome,
@@ -223,19 +253,19 @@ export class TaxCalculationService {
 
   private static getProvincialTax(salary: number, province: string): number {
     const provincialRates: Record<string, number> = {
-      'ontario': 0.1316,
-      'quebec': 0.25,
-      'british columbia': 0.205,
-      'alberta': 0.15,
-      'manitoba': 0.1775,
-      'saskatchewan': 0.145,
-      'nova scotia': 0.21,
-      'new brunswick': 0.1598,
-      'newfoundland': 0.187,
-      'prince edward island': 0.167
+      'ontario': 0.0597,
+      'quebec': 0.14,
+      'british columbia': 0.0506,
+      'alberta': 0.10,
+      'manitoba': 0.108,
+      'saskatchewan': 0.105,
+      'nova scotia': 0.0879,
+      'new brunswick': 0.0968,
+      'newfoundland': 0.087,
+      'pei': 0.098
     };
     
-    return salary * (provincialRates[province.toLowerCase()] || 0.1);
+    return salary * (provincialRates[province.toLowerCase()] || 0.10);
   }
 
   private static calculateUKTax(salary: number, deductions: number = 0): TaxCalculationResult {
@@ -276,15 +306,12 @@ export class TaxCalculationService {
   }
 
   private static calculateUKNI(salary: number): number {
-    if (salary <= 12570) return 0;
-    if (salary <= 50270) return (salary - 12570) * 0.12;
-    return (50270 - 12570) * 0.12 + (salary - 50270) * 0.02;
+    const niThreshold = 12570;
+    const niRate = 0.12;
+    return Math.max(0, (salary - niThreshold) * niRate);
   }
 
   private static calculateAustraliaTax(salary: number, deductions: number = 0): TaxCalculationResult {
-    const taxFreeThreshold = 18200;
-    const taxableIncome = Math.max(0, salary - taxFreeThreshold - deductions);
-    
     const brackets = [
       { min: 0, max: 18200, rate: 0, tax: 0 },
       { min: 18201, max: 45000, rate: 19, tax: 0 },
@@ -293,20 +320,20 @@ export class TaxCalculationService {
       { min: 180001, max: null, rate: 45, tax: 0 }
     ];
 
+    const taxableIncome = Math.max(0, salary - deductions);
     let incomeTax = 0;
+
     for (const bracket of brackets) {
-      if (salary > bracket.min) {
+      if (taxableIncome > bracket.min) {
         const taxableInBracket = bracket.max 
-          ? Math.min(salary, bracket.max) - bracket.min
-          : salary - bracket.min;
+          ? Math.min(taxableIncome, bracket.max) - bracket.min
+          : taxableIncome - bracket.min;
         bracket.tax = taxableInBracket * (bracket.rate / 100);
         incomeTax += bracket.tax;
       }
     }
 
-    const medicareLevy = salary > 23365 ? salary * 0.02 : 0;
-    const superannuation = salary * 0.105;
-    
+    const medicareLevy = salary * 0.02;
     const totalTax = incomeTax + medicareLevy;
 
     return {
@@ -315,24 +342,31 @@ export class TaxCalculationService {
       socialSecurity: 0,
       medicare: medicareLevy,
       totalTax,
-      takeHomeSalary: salary - totalTax - superannuation,
-      taxableIncome: salary,
+      takeHomeSalary: salary - totalTax,
+      taxableIncome,
       effectiveTaxRate: (totalTax / salary) * 100,
       brackets
     };
   }
 
   private static calculateGermanyTax(salary: number, deductions: number = 0): TaxCalculationResult {
-    const basicAllowance = 10908;
-    const taxableIncome = Math.max(0, salary - basicAllowance - deductions);
+    const taxableIncome = Math.max(0, salary - deductions);
     
+    const brackets = [
+      { min: 0, max: 10908, rate: 0, tax: 0 },
+      { min: 10909, max: 62809, rate: 42, tax: 0 },
+      { min: 62810, max: null, rate: 45, tax: 0 }
+    ];
+
     let incomeTax = 0;
-    if (taxableIncome > 62810) {
-      incomeTax = 17543.26 + (taxableIncome - 62810) * 0.42;
-    } else if (taxableIncome > 17005) {
-      incomeTax = 922.98 + (taxableIncome - 17005) * 0.24;
-    } else if (taxableIncome > 10908) {
-      incomeTax = (taxableIncome - 10908) * 0.14;
+    for (const bracket of brackets) {
+      if (taxableIncome > bracket.min) {
+        const taxableInBracket = bracket.max 
+          ? Math.min(taxableIncome, bracket.max) - bracket.min
+          : taxableIncome - bracket.min;
+        bracket.tax = taxableInBracket * (bracket.rate / 100);
+        incomeTax += bracket.tax;
+      }
     }
 
     const solidarityTax = incomeTax * 0.055;
@@ -494,7 +528,7 @@ export class TaxCalculationService {
     };
   }
 
-  static async saveTaxCalculation(userId: string, calculation: TaxCalculationResult, metadata: any): Promise<{ data: any; error: any }> {
+  static async saveTaxCalculation(userId: string, calculation: TaxCalculationResult, metadata: TaxCalculationMetadata): Promise<TaxCalculationServiceResponse<TaxCalculationData>> {
     try {
       const { data, error } = await supabase
         .from('user_data')
@@ -506,18 +540,26 @@ export class TaxCalculationService {
             ...calculation,
             metadata,
             calculatedAt: new Date().toISOString()
-          }
+          } as unknown as Json
         })
         .select()
         .single();
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data: data as unknown as TaxCalculationData, error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error saving tax calculation:', error);
+      const serviceError: TaxCalculationServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 
-  static async getUserTaxCalculations(userId: string): Promise<{ data: any[] | null; error: any }> {
+  static async getUserTaxCalculations(userId: string): Promise<TaxCalculationServiceResponse<TaxCalculationData[]>> {
     try {
       const { data, error } = await supabase
         .from('user_data')
@@ -526,9 +568,17 @@ export class TaxCalculationService {
         .eq('data_type', 'tax_calculation')
         .order('created_at', { ascending: false });
 
-      return { data, error };
+      if (error) throw error;
+
+      return { data: data as unknown as TaxCalculationData[], error: null };
     } catch (error) {
-      return { data: null, error };
+      console.error('Error fetching tax calculations:', error);
+      const serviceError: TaxCalculationServiceError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+      return { data: null, error: serviceError };
     }
   }
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@/test/utils/test-utils'
-import { CountrySelector } from '@/components/CountrySelector'
+import CountrySelector from '@/components/CountrySelector';
 
 // Mock the API client
 vi.mock('@/infrastructure/api/SecureApiClient', () => ({

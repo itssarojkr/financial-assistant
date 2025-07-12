@@ -27,12 +27,19 @@ export interface FilterOption {
   options?: { value: string; label: string }[];
 }
 
+export interface DateRange {
+  from?: Date | undefined;
+  to?: Date | undefined;
+}
+
+export type FilterValue = string | Date | DateRange | null;
+
 interface SearchFilterProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
   filters: FilterOption[];
-  activeFilters: Record<string, any>;
-  onFilterChange: (key: string, value: any) => void;
+  activeFilters: Record<string, FilterValue>;
+  onFilterChange: (key: string, value: FilterValue) => void;
   onClearFilters: () => void;
   searchPlaceholder?: string;
   className?: string;
@@ -60,7 +67,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
     switch (filter.type) {
       case 'select':
         return (
-          <Select value={value || ''} onValueChange={(val) => onFilterChange(filter.key, val)}>
+          <Select value={value as string || ''} onValueChange={(val) => onFilterChange(filter.key, val)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={`Select ${filter.label.toLowerCase()}`} />
             </SelectTrigger>
@@ -87,14 +94,14 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {value ? format(new Date(value), "PPP") : `Select ${filter.label.toLowerCase()}`}
+                {value ? format(value as Date, "PPP") : `Select ${filter.label.toLowerCase()}`}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={value ? new Date(value) : undefined}
-                onSelect={(date) => onFilterChange(filter.key, date)}
+                selected={value as Date | undefined}
+                onSelect={(date) => date && onFilterChange(filter.key, date)}
                 initialFocus
                 className="p-3 pointer-events-auto"
               />
@@ -102,7 +109,8 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           </Popover>
         );
 
-      case 'dateRange':
+      case 'dateRange': {
+        const dateRange = value as DateRange | undefined;
         return (
           <div className="space-y-2">
             <Popover>
@@ -111,18 +119,18 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !value?.from && "text-muted-foreground"
+                    !dateRange?.from && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {value?.from ? format(new Date(value.from), "PPP") : "From date"}
+                  {dateRange?.from ? format(dateRange.from, "PPP") : "From date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={value?.from ? new Date(value.from) : undefined}
-                  onSelect={(date) => onFilterChange(filter.key, { ...value, from: date })}
+                  selected={dateRange?.from}
+                  onSelect={(date) => onFilterChange(filter.key, { ...dateRange, from: date })}
                   initialFocus
                   className="p-3 pointer-events-auto"
                 />
@@ -134,18 +142,18 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !value?.to && "text-muted-foreground"
+                    !dateRange?.to && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {value?.to ? format(new Date(value.to), "PPP") : "To date"}
+                  {dateRange?.to ? format(dateRange.to, "PPP") : "To date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={value?.to ? new Date(value.to) : undefined}
-                  onSelect={(date) => onFilterChange(filter.key, { ...value, to: date })}
+                  selected={dateRange?.to}
+                  onSelect={(date) => onFilterChange(filter.key, { ...dateRange, to: date })}
                   initialFocus
                   className="p-3 pointer-events-auto"
                 />
@@ -153,6 +161,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
             </Popover>
           </div>
         );
+      }
 
       default:
         return null;
@@ -213,12 +222,13 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
 
             let displayValue = '';
             if (filter.type === 'date' && value) {
-              displayValue = format(new Date(value), "MMM dd, yyyy");
-            } else if (filter.type === 'dateRange' && value?.from) {
-              displayValue = `${format(new Date(value.from), "MMM dd")}${value.to ? ` - ${format(new Date(value.to), "MMM dd")}` : ''}`;
+              displayValue = format(value as Date, "MMM dd, yyyy");
+            } else if (filter.type === 'dateRange' && value && typeof value === 'object' && 'from' in value) {
+              const dateRange = value as DateRange;
+              displayValue = `${format(dateRange.from!, "MMM dd")}${dateRange.to ? ` - ${format(dateRange.to, "MMM dd")}` : ''}`;
             } else if (filter.type === 'select' && value) {
               const option = filter.options?.find(opt => opt.value === value);
-              displayValue = option?.label || value;
+              displayValue = option?.label || String(value);
             }
 
             return (

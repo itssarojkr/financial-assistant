@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RepositoryFactory } from '@/infrastructure/database/repositories/RepositoryFactory';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export interface Transaction {
   id: string;
@@ -14,15 +14,40 @@ export interface TransactionOperation {
   id: string;
   type: 'create' | 'update' | 'delete';
   table: string;
-  data: any;
-  conditions?: Record<string, any>;
+  data: Record<string, unknown>;
+  conditions?: Record<string, unknown>;
+}
+
+export interface TransactionResult {
+  success: boolean;
+  results: unknown[];
+  error?: TransactionError;
+}
+
+export interface TransactionError {
+  message: string;
+  code?: string;
+  details?: string;
+}
+
+export interface UserData {
+  email: string;
+  profile?: Record<string, unknown>;
+  preferences?: Record<string, unknown>;
+  initialData?: Record<string, unknown>[];
+}
+
+export interface UserUpdateData {
+  profile?: Record<string, unknown>;
+  preferences?: Record<string, unknown>;
+  additionalData?: Record<string, unknown>[];
 }
 
 export class TransactionManager {
   private static instance: TransactionManager;
 
   private constructor() {
-    RepositoryFactory.getInstance();
+    // Private constructor for singleton pattern
   }
 
   static getInstance(): TransactionManager {
@@ -32,16 +57,17 @@ export class TransactionManager {
     return TransactionManager.instance;
   }
 
-  async executeTransaction(operations: TransactionOperation[]): Promise<{ success: boolean; results: any[]; error?: any }> {
+  async executeTransaction(operations: TransactionOperation[]): Promise<TransactionResult> {
+    const transactionId = this.generateTransactionId();
     const transaction: Transaction = {
-      id: this.generateTransactionId(),
+      id: transactionId,
       operations,
       status: 'pending',
       createdAt: new Date(),
     };
 
     try {
-      const results: any[] = [];
+      const results: unknown[] = [];
 
       for (const operation of operations) {
         const result = await this.executeOperation(operation);
@@ -51,22 +77,33 @@ export class TransactionManager {
       transaction.status = 'committed';
       transaction.completedAt = new Date();
 
-      return { success: true, results };
+      return {
+        success: true,
+        results,
+      };
     } catch (error) {
       transaction.status = 'rolled_back';
       transaction.completedAt = new Date();
 
-      console.error('Transaction failed:', error);
-      return { success: false, results: [], error };
+      const transactionError: TransactionError = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: error instanceof PostgrestError ? error.code : undefined,
+        details: error instanceof PostgrestError ? error.details : undefined,
+      };
+
+      return {
+        success: false,
+        results: [],
+        error: transactionError,
+      };
     }
   }
 
-  private async executeOperation(operation: TransactionOperation): Promise<any> {
+  private async executeOperation(operation: TransactionOperation): Promise<unknown> {
     const { type, table, data, conditions } = operation;
 
     const validTables = [
-      'budgets', 'user_data', 'expense_categories', 'cities', 'states', 
-      'countries', 'expenses', 'localities', 'profiles', 'spending_alerts', 
+      'profiles', 'user_data', 'expenses', 'budgets', 'spending_alerts',
       'user_preferences', 'user_sessions'
     ];
 
@@ -75,19 +112,20 @@ export class TransactionManager {
     }
 
     switch (type) {
-      case 'create':
+      case 'create': {
         const { data: createResult, error: createError } = await supabase
-          .from(table as any)
+          .from(table)
           .insert(data)
           .select();
         if (createError) throw createError;
         return createResult;
+      }
 
-      case 'update':
+      case 'update': {
         if (!conditions) {
           throw new Error('Update operations require conditions');
         }
-        let updateQuery = supabase.from(table as any).update(data);
+        let updateQuery = supabase.from(table).update(data);
         
         Object.entries(conditions).forEach(([key, value]) => {
           updateQuery = updateQuery.eq(key, value);
@@ -96,12 +134,13 @@ export class TransactionManager {
         const { data: updateResult, error: updateError } = await updateQuery.select();
         if (updateError) throw updateError;
         return updateResult;
+      }
 
-      case 'delete':
+      case 'delete': {
         if (!conditions) {
           throw new Error('Delete operations require conditions');
         }
-        let deleteQuery = supabase.from(table as any);
+        let deleteQuery = supabase.from(table);
         
         Object.entries(conditions).forEach(([key, value]) => {
           deleteQuery = deleteQuery.eq(key, value);
@@ -110,18 +149,14 @@ export class TransactionManager {
         const { data: deleteResult, error: deleteError } = await deleteQuery.delete();
         if (deleteError) throw deleteError;
         return deleteResult;
+      }
 
       default:
         throw new Error(`Unsupported operation type: ${type}`);
     }
   }
 
-  async createUserWithData(userData: {
-    email: string;
-    profile?: any;
-    preferences?: any;
-    initialData?: any[];
-  }): Promise<{ success: boolean; userId?: string; error?: any }> {
+  async createUserWithData(userData: UserData): Promise<{ success: boolean; userId?: string; error?: TransactionError }> {
     const operations: TransactionOperation[] = [];
 
     operations.push({
@@ -144,12 +179,12 @@ export class TransactionManager {
     }
 
     if (userData.initialData) {
-      userData.initialData.forEach(() => {
+      userData.initialData.forEach((dataItem) => {
         operations.push({
           id: this.generateOperationId(),
           type: 'create',
           table: 'user_data',
-          data: userData.initialData,
+          data: dataItem,
         });
       });
     }
@@ -157,9 +192,10 @@ export class TransactionManager {
     const result = await this.executeTransaction(operations);
     
     if (result.success && result.results.length > 0) {
+      const firstResult = result.results[0] as unknown[];
       return {
         success: true,
-        userId: result.results[0]?.[0]?.id,
+        userId: (firstResult?.[0] as { id: string })?.id,
       };
     }
 
@@ -169,11 +205,7 @@ export class TransactionManager {
     };
   }
 
-  async updateUserWithData(userId: string, updates: {
-    profile?: any;
-    preferences?: any;
-    additionalData?: any[];
-  }): Promise<{ success: boolean; error?: any }> {
+  async updateUserWithData(userId: string, updates: UserUpdateData): Promise<{ success: boolean; error?: TransactionError }> {
     const operations: TransactionOperation[] = [];
 
     if (updates.profile) {
@@ -218,7 +250,7 @@ export class TransactionManager {
     };
   }
 
-  async deleteUserWithData(userId: string): Promise<{ success: boolean; error?: any }> {
+  async deleteUserWithData(userId: string): Promise<{ success: boolean; error?: TransactionError }> {
     const operations: TransactionOperation[] = [
       {
         id: this.generateOperationId(),

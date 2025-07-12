@@ -1,8 +1,30 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+export interface ExpenseData {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  description: string | null;
+  category_id: number | null;
+  date: string;
+  location: string | null;
+  source: string | null;
+  calculation_id: string | null;
+  created_at: string | null;
+}
+
+export interface AnalyticsResult {
+  totalExpenses: number;
+  totalAmount: number;
+  avgExpense: number;
+  categoryBreakdown: Record<string, number>;
+  monthlyTrend: Record<string, number>;
+}
+
 export class AnalyticsService {
-  static async getExpenseAnalytics(userId: string, timeRange: 'week' | 'month' | 'year' = 'month') {
+  static async getExpenseAnalytics(userId: string, timeRange: 'week' | 'month' | 'year' = 'month'): Promise<AnalyticsResult | null> {
     console.log('Getting expense analytics for user:', userId, 'timeRange:', timeRange);
     
     try {
@@ -26,16 +48,16 @@ export class AnalyticsService {
     }
   }
 
-  private static getCategoryBreakdown(expenses: any[]) {
+  private static getCategoryBreakdown(expenses: ExpenseData[]): Record<string, number> {
     const breakdown: Record<string, number> = {};
     expenses.forEach(expense => {
-      const category = expense.category || 'other';
+      const category = expense.category_id?.toString() || 'other';
       breakdown[category] = (breakdown[category] || 0) + expense.amount;
     });
     return breakdown;
   }
 
-  private static getMonthlyTrend(expenses: any[]) {
+  private static getMonthlyTrend(expenses: ExpenseData[]): Record<string, number> {
     const trend: Record<string, number> = {};
     expenses.forEach(expense => {
       const month = new Date(expense.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });

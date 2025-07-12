@@ -4,10 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserDataService, TaxCalculationData } from '@/application/services/UserDataService';
+import { UserDataService } from '@/application/services/UserDataService';
+import { TaxCalculationService, TaxCalculationData } from '@/application/services/TaxCalculationService';
 import { CalculationStorageService } from '@/application/services/CalculationStorageService';
 import { MobileLayout, MobileCard } from '@/components/layout/MobileLayout';
-import { CountrySelector } from '@/components/CountrySelector';
+import CountrySelector from '@/components/CountrySelector';
 import { SalaryInput } from '@/components/SalaryInput';
 import TaxCalculator from '@/components/TaxCalculator';
 import LivingExpenses from '@/components/LivingExpenses';
@@ -262,25 +263,42 @@ const MobileIndex = () => {
     
     setIsLoadingSavedCalculations(true);
     try {
-      const { data, error } = await UserDataService.getTaxCalculations(user.id);
+      const { data, error } = await TaxCalculationService.getUserTaxCalculations(user.id);
       if (error) {
-        console.error('Error loading saved calculations:', error);
         toast({
           title: "Error loading calculations",
           description: error.message,
           variant: "destructive",
         });
       } else {
-        // Filter and type the data properly
-        const typedData = (data || []).filter(item => 
-          item.data_content && 
-          typeof item.data_content === 'object' && 
-          'country' in item.data_content
-        ) as LoadCalculationModalSavedCalculation[];
-        setSavedCalculations(typedData);
+        const calculations = data?.map((item: TaxCalculationData) => ({
+          id: item.id,
+          data_name: item.data_name,
+          data_content: item.data_content as unknown as {
+            country: string;
+            currency: string;
+            salary: number;
+            netSalary: number;
+            taxAmount: number;
+            effectiveTaxRate: number;
+            expenseData?: {
+              rent: number;
+              food: number;
+              transport: number;
+              utilities: number;
+              healthcare: number;
+              other: number;
+              total: number;
+            };
+          },
+          is_favorite: false,
+          created_at: item.created_at || '',
+          updated_at: item.updated_at || ''
+        })) || [];
+        
+        setSavedCalculations(calculations);
       }
     } catch (error) {
-      console.error('Error loading saved calculations:', error);
       toast({
         title: "Error loading calculations",
         description: "An unexpected error occurred.",
@@ -291,102 +309,81 @@ const MobileIndex = () => {
     }
   };
 
-  // Load calculation from saved data
   const loadCalculation = (calculation: LoadCalculationModalSavedCalculation) => {
-    const data = calculation.data_content;
+    const content = calculation.data_content;
     
-    // Load salary data
-    setSalaryData(prev => ({
-      ...prev,
-      country: data.country || '',
-      countryCode: '',
-      grossSalary: data.salary || 0,
-      currency: data.currency || 'USD',
-    }));
+    setSalaryData({
+      country: content.country,
+      countryCode: content.country === 'India' ? 'IN' : 'US',
+      state: '',
+      stateId: '',
+      city: '',
+      cityId: '',
+      locality: '',
+      localityId: '',
+      isNative: true,
+      grossSalary: content.salary,
+      currency: content.currency,
+    });
 
-    // Load tax data based on country
-    const taxDataToLoad: TaxData = {
-      federalTax: 0,
-      stateTax: 0,
-      socialSecurity: 0,
-      medicare: 0,
-      totalTax: data.taxAmount || 0,
-      takeHomeSalary: data.netSalary || 0,
-      taxableIncome: data.salary || 0,
-      effectiveTaxRate: data.effectiveTaxRate || 0,
-    };
-
-    // Set tax data for the specific country
-    switch (data.country) {
-      case 'India':
-        setTaxDataIndia(taxDataToLoad);
-        break;
-      case 'United States':
-        setTaxDataUS(taxDataToLoad);
-        break;
-      case 'Canada':
-        setTaxDataCanada({ ...taxDataToLoad, provTax: 0, cpp: 0, ei: 0, federalTaxable: 0, provTaxable: 0, brackets: [] });
-        break;
-      case 'United Kingdom':
-        setTaxDataUK({ ...taxDataToLoad, incomeTax: 0, ni: 0, studentLoan: 0, taxable: 0, brackets: [] });
-        break;
-      case 'Australia':
-        setTaxDataAustralia({ ...taxDataToLoad, incomeTax: 0, medicareSurcharge: 0, super: 0, taxable: 0, brackets: [] });
-        break;
-      case 'Germany':
-        setTaxDataGermany({ ...taxDataToLoad, incomeTax: 0, soli: 0, churchTax: 0, taxable: 0, brackets: [] });
-        break;
-      case 'France':
-        setTaxDataFrance({ ...taxDataToLoad, incomeTax: 0, csgcrds: 0, taxable: 0, brackets: [] });
-        break;
-      case 'Brazil':
-        setTaxDataBrazil({ ...taxDataToLoad, inss: 0, irpf: 0, taxable: 0, brackets: [] });
-        break;
-      case 'South Africa':
-        setTaxDataSouthAfrica({ ...taxDataToLoad, incomeTax: 0, rebate: 0, uif: 0, taxable: 0, brackets: [] });
-        break;
+    if (content.expenseData) {
+      setExpenseData({
+        rent: content.expenseData.rent,
+        utilities: content.expenseData.utilities,
+        food: content.expenseData.food,
+        transport: content.expenseData.transport,
+        healthcare: content.expenseData.healthcare,
+        other: content.expenseData.other,
+        total: content.expenseData.total
+      });
     }
 
-    // Load expense data if available
-    if (data.expenseData) {
-      setExpenseData(data.expenseData);
-    }
-
-    // Close modal and show success message
+    setActiveTab('results');
     setShowLoadCalculationModal(false);
+    
     toast({
       title: "Calculation loaded",
       description: "Your saved calculation has been loaded successfully.",
     });
-
-    // Navigate to analysis tab to show the loaded calculation
-    setActiveTab('analysis');
   };
 
-  // Check for existing similar calculation
   const checkExistingCalculation = async () => {
-    if (!user || !hasCalculation) return null;
+    if (!user) return;
     
     try {
-      const { data } = await UserDataService.getTaxCalculations(user.id);
+      const { data, error } = await TaxCalculationService.getUserTaxCalculations(user.id);
+      if (error) {
+        console.error('Error checking existing calculations:', error);
+        return;
+      }
+      
       if (data && data.length > 0) {
-        // Find calculation with similar data
-        const similar = data.find(calc => {
-          const existing = calc.data_content as TaxCalculationData;
-          return (
-            existing.country === salaryData.country &&
-            existing.salary === salaryData.grossSalary &&
-            existing.currency === salaryData.currency &&
-            Math.abs((existing.taxAmount as number) - currentTaxData.totalTax) < 1 &&
-            Math.abs((existing.netSalary as number) - currentTaxData.takeHomeSalary) < 1
-          );
+        const calc = data[0];
+        const content = calc.data_content as unknown as {
+          country: string;
+          salary: number;
+          currency: string;
+          taxAmount: number;
+          netSalary: number;
+          expenseData?: {
+            rent: number;
+            utilities: number;
+            food: number;
+            transport: number;
+            healthcare: number;
+            other: number;
+          };
+        };
+        
+        setExistingCalculation({
+          id: calc.id,
+          data_name: calc.data_name,
+          data_content: content
         });
-        return similar || null;
       }
     } catch (error) {
-      console.error('Error checking existing calculation:', error);
+      console.error('Error checking existing calculations:', error);
     }
-    return null;
   };
 
   // Save calculation functionality
@@ -406,29 +403,8 @@ const MobileIndex = () => {
     }
 
     // Check for existing calculation
-    const existing = await checkExistingCalculation();
-    if (existing) {
-      // Convert to ExistingCalculation type
-      const existingCalc: ExistingCalculation = {
-        id: existing.id,
-        data_name: existing.data_name,
-        data_content: {
-          country: (existing.data_content as TaxCalculationData).country || '',
-          salary: (existing.data_content as TaxCalculationData).salary || 0,
-          currency: (existing.data_content as TaxCalculationData).currency || '',
-          taxAmount: (existing.data_content as TaxCalculationData).taxAmount || 0,
-          netSalary: (existing.data_content as TaxCalculationData).netSalary || 0,
-          expenseData: (existing.data_content as TaxCalculationData).expenseData || {
-            rent: 0,
-            utilities: 0,
-            food: 0,
-            transport: 0,
-            healthcare: 0,
-            other: 0,
-          },
-        },
-      };
-      setExistingCalculation(existingCalc);
+    await checkExistingCalculation();
+    if (existingCalculation) {
       setShowSaveCalculationModal(true);
       return;
     }
@@ -461,13 +437,13 @@ const MobileIndex = () => {
       let result;
       if (isOverwrite && existingId) {
         // Update existing calculation
-        const { error } = await UserDataService.updateTaxCalculation(user.id, existingId, calculationData);
+        const { error } = await TaxCalculationService.updateTaxCalculation(user.id, existingId, calculationData);
         
         if (error) throw error;
         result = { data: null, error: null };
       } else {
         // Save as new calculation
-        result = await UserDataService.saveTaxCalculation(user.id, calculationData, calculationName);
+        result = await TaxCalculationService.saveTaxCalculation(user.id, calculationData, calculationName);
       }
       
       if (result.error) {
@@ -566,18 +542,32 @@ const MobileIndex = () => {
         </TabsList>
 
         <TabsContent value="basics" className="space-y-4">
-          <CountrySelector 
-            salaryData={salaryData} 
-            setSalaryData={setSalaryData}
-            onNext={() => setActiveTab('taxes')}
-            salaryValid={isSalaryValid}
-            onLoadCalculation={() => setShowLoadCalculationModal(true)}
-            showLoadButton={!!user}
-          />
-          <SalaryInput 
-            salaryData={salaryData} 
-            setSalaryData={setSalaryData}
-          />
+              {activeTab === 'basics' && (
+                <CountrySelector
+                  salaryData={salaryData}
+                  setSalaryData={setSalaryData}
+                  onNext={() => setActiveTab('salary')}
+                />
+              )}
+
+              {activeTab === 'salary' && (
+                <SalaryInput
+                  salaryData={salaryData}
+                  setSalaryData={setSalaryData}
+                  onNext={() => setActiveTab('expenses')}
+                  salaryValid={isSalaryValid}
+                  onLoadCalculation={() => setShowLoadCalculationModal(true)}
+                  showLoadButton={true}
+                />
+              )}
+
+              {activeTab === 'expenses' && (
+                <LivingExpenses
+                  expenseData={expenseData}
+                  setExpenseData={setExpenseData}
+                  onNext={() => setActiveTab('results')}
+                />
+              )}
         </TabsContent>
 
         <TabsContent value="taxes" className="space-y-4">
