@@ -19,8 +19,10 @@ export class AlertService {
   static async createAlert(params: {
     userId: string;
     type: string;
-    threshold: number;
-    period: string;
+    title: string;
+    message: string;
+    threshold?: number;
+    period?: string;
     active?: boolean;
     severity?: string;
     currency?: string;
@@ -31,8 +33,8 @@ export class AlertService {
         .insert({
           user_id: params.userId,
           type: params.type,
-          threshold: params.threshold,
-          period: params.period,
+          threshold: params.threshold || 0,
+          period: params.period || 'monthly',
           active: params.active ?? true,
           severity: params.severity ?? 'medium',
           currency: params.currency ?? 'USD',
@@ -48,12 +50,16 @@ export class AlertService {
         data: data ? {
           id: data.id,
           userId: data.user_id,
-          type: data.type,
+          type: data.type || 'system',
           threshold: data.threshold,
           period: data.period,
-          active: data.active,
-          severity: data.severity || 'medium',
+          active: data.active || true,
+          severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
           currency: data.currency || 'USD',
+          title: params.title,
+          message: params.message,
+          isRead: false,
+          isDismissed: false,
           createdAt: new Date(data.created_at || ''),
           updatedAt: new Date(data.updated_at || ''),
         } : null, 
@@ -78,12 +84,16 @@ export class AlertService {
       const alerts = data?.map(item => ({
         id: item.id,
         userId: item.user_id,
-        type: item.type,
+        type: (item.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
         threshold: item.threshold,
         period: item.period,
-        active: item.active,
-        severity: item.severity || 'medium',
+        active: item.active || true,
+        severity: (item.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
         currency: item.currency || 'USD',
+        title: `Spending Alert - ${item.type}`,
+        message: `You have exceeded your ${item.type} threshold`,
+        isRead: false,
+        isDismissed: false,
         createdAt: new Date(item.created_at || ''),
         updatedAt: new Date(item.updated_at || ''),
       })) || [];
@@ -100,7 +110,12 @@ export class AlertService {
       const { data, error } = await supabase
         .from('spending_alerts')
         .update({
-          ...updates,
+          type: updates.type,
+          threshold: updates.threshold,
+          period: updates.period,
+          active: updates.active,
+          severity: updates.severity,
+          currency: updates.currency,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -113,12 +128,16 @@ export class AlertService {
         data: data ? {
           id: data.id,
           userId: data.user_id,
-          type: data.type,
+          type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
           threshold: data.threshold,
           period: data.period,
-          active: data.active,
-          severity: data.severity || 'medium',
+          active: data.active || true,
+          severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
           currency: data.currency || 'USD',
+          title: updates.title || `Alert - ${data.type}`,
+          message: updates.message || `Alert updated`,
+          isRead: updates.isRead || false,
+          isDismissed: updates.isDismissed || false,
           createdAt: new Date(data.created_at || ''),
           updatedAt: new Date(data.updated_at || ''),
         } : null, 

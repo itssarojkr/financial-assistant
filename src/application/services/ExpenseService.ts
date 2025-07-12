@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Expense, CreateExpenseParams } from '@/core/domain/entities/Expense';
 
@@ -31,7 +30,7 @@ export class ExpenseService {
           currency: params.currency,
           description: params.description,
           date: params.date.toISOString(),
-          calculation_id: params.calculationId,
+          calculation_id: params.calculationId ?? null,
         })
         .select()
         .single();

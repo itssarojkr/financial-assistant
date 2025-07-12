@@ -8,6 +8,10 @@ export interface Alert {
   message: string;
   isRead: boolean;
   isDismissed: boolean;
+  threshold?: number;
+  period?: string;
+  active?: boolean;
+  currency?: string;
   createdAt: Date;
   updatedAt: Date;
   metadata?: Record<string, any>;

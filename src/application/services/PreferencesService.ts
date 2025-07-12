@@ -17,7 +17,7 @@ export class PreferencesService {
 
       const preferences: UserPreferences = data ? {
         userId: data.user_id,
-        theme: data.theme || 'light',
+        theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
         language: data.language || 'en',
         currency: data.default_currency || 'USD',
         notifications: {
@@ -69,7 +69,7 @@ export class PreferencesService {
 
       const updatedPreferences: UserPreferences = {
         userId: data.user_id,
-        theme: data.theme || 'light',
+        theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
         language: data.language || 'en',
         currency: data.default_currency || 'USD',
         notifications: {
@@ -78,9 +78,9 @@ export class PreferencesService {
           sms: false,
           ...(typeof data.notifications === 'object' ? data.notifications : {})
         },
-        smsScanning: data.sms_scanning_enabled || false,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
+        smsScanning: Boolean(data.sms_scanning_enabled),
+        createdAt: new Date(data.created_at || ''),
+        updatedAt: new Date(data.updated_at || ''),
       };
 
       return { data: updatedPreferences, error: null };
