@@ -9,6 +9,7 @@ import { useAsyncError } from '@/hooks/use-error-boundary';
 import { Loader2, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 import { convertCurrency } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { SalaryData } from '@/shared/types/common.types';
 
 const SUPPORTED_CURRENCIES = [
   { code: 'USD', label: 'USD - US Dollar', symbol: '$' },
@@ -24,23 +25,10 @@ const SUPPORTED_CURRENCIES = [
   { code: 'FRF', label: 'FRF - French Franc', symbol: '₣' },
 ];
 
-interface SalaryData {
-  country: string;
-  countryCode: string;
-  state: string;
-  stateId: string;
-  city: string;
-  cityId: string;
-  locality: string;
-  localityId: string;
-  isNative: boolean;
-  grossSalary: number;
-  currency: string;
-}
-
 interface SalaryInputProps {
   salaryData: SalaryData;
   setSalaryData: (data: SalaryData) => void;
+  onNext?: () => void;
   onLoadCalculation?: () => void;
   showLoadButton?: boolean;
   disabled?: boolean;

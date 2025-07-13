@@ -4,6 +4,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 
+// Countries with implemented tax calculators
+const SUPPORTED_COUNTRIES = [
+  'India',
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'Brazil',
+  'South Africa'
+];
+
 interface Country {
   id: number;
   name: string;
@@ -71,7 +84,11 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
       if (error) {
         console.error('Error fetching countries:', error);
       } else {
-        setCountries(data || []);
+        // Filter to only show countries with implemented tax calculators
+        const supportedCountries = (data || []).filter(country => 
+          SUPPORTED_COUNTRIES.includes(country.name)
+        );
+        setCountries(supportedCountries);
       }
     } catch (error) {
       console.error('Error fetching countries:', error);
@@ -207,6 +224,9 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
     <div className="space-y-4">
       <div>
         <Label htmlFor="country">Country</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Only countries with implemented tax calculators are shown
+        </p>
         <Select onValueChange={handleCountryChange}>
           <SelectTrigger id="country">
             <SelectValue placeholder="Select a country" />

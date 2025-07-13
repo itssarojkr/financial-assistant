@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Alert } from '@/core/domain/entities/Alert';
+import { Alert, CreateAlertParams, UpdateAlertParams } from '@/core/domain/entities/Alert';
 import { PostgrestError } from '@supabase/supabase-js';
 
 export interface CreateAlertData {
@@ -13,6 +13,7 @@ export interface CreateAlertData {
   active?: boolean;
   severity?: string;
   currency?: string;
+  calculationId?: string | null;
 }
 
 export interface SpendingAlert {
@@ -24,6 +25,7 @@ export interface SpendingAlert {
   active: boolean | null;
   severity: string | null;
   currency: string | null;
+  calculation_id?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -52,6 +54,7 @@ export class AlertService {
           active: params.active ?? true,
           severity: params.severity ?? 'medium',
           currency: params.currency ?? 'USD',
+          calculation_id: params.calculationId ?? null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -103,7 +106,7 @@ export class AlertService {
     }
   }
 
-  static async updateAlert(id: string, updates: Partial<CreateAlertData>): Promise<AlertServiceResponse<Alert>> {
+  static async updateAlert(id: string, updates: UpdateAlertParams): Promise<AlertServiceResponse<Alert>> {
     try {
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
@@ -115,6 +118,7 @@ export class AlertService {
       if (updates.active !== undefined) updateData.active = updates.active;
       if (updates.severity !== undefined) updateData.severity = updates.severity;
       if (updates.currency !== undefined) updateData.currency = updates.currency;
+      if (updates.calculationId !== undefined) updateData.calculation_id = updates.calculationId;
 
       const { data, error } = await supabase
         .from('spending_alerts')
@@ -168,7 +172,7 @@ export class AlertService {
   private static mapToAlert(data: SpendingAlert, title: string, message: string): Alert {
     return Alert.create({
       userId: data.user_id,
-      type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system',
+      type: (data.type || 'system') as 'spending' | 'budget' | 'tax' | 'system' | 'amount' | 'percentage',
       title,
       message,
       severity: (data.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
@@ -178,6 +182,7 @@ export class AlertService {
       period: data.period,
       active: data.active || true,
       currency: data.currency || 'USD',
+      calculationId: data.calculation_id || null,
     }, data.id);
   }
 }

@@ -10,7 +10,7 @@ export interface ExpenseWithCategory {
   description: string;
   category: string;
   date: string;
-  calculationId?: string | null;
+  calculation_id?: string | null;
   created_at: string;
   updated_at: string;
   expense_categories?: {
@@ -32,6 +32,7 @@ export interface ExpenseData {
   source: string | null;
   calculation_id: string | null;
   created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface ExpenseServiceError {
@@ -121,7 +122,14 @@ export class ExpenseService {
     try {
       const { data, error } = await supabase
         .from('expenses')
-        .select('*')
+        .select(`
+          *,
+          expense_categories (
+            id,
+            name,
+            color
+          )
+        `)
         .eq('user_id', userId)
         .order('date', { ascending: false });
 
@@ -197,13 +205,18 @@ export class ExpenseService {
 
   static async updateExpense(id: string, updates: Partial<Expense>): Promise<ExpenseServiceResponse<Expense>> {
     try {
-      const updateData: Record<string, unknown> = {};
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
 
       if (updates.amount !== undefined) updateData.amount = updates.amount;
       if (updates.currency !== undefined) updateData.currency = updates.currency;
       if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.date !== undefined) updateData.date = updates.date.toISOString();
-      if (updates.calculationId !== undefined) updateData.calculation_id = updates.calculationId;
+      if (updates.category_id !== undefined) updateData.category_id = updates.category_id;
+      if (updates.date !== undefined) updateData.date = updates.date;
+      if (updates.location !== undefined) updateData.location = updates.location;
+      if (updates.source !== undefined) updateData.source = updates.source;
+      if (updates.calculation_id !== undefined) updateData.calculation_id = updates.calculation_id;
 
       const { data, error } = await supabase
         .from('expenses')
@@ -214,7 +227,10 @@ export class ExpenseService {
 
       if (error) throw error;
 
-      return { data: data ? this.mapToExpense(data) : null, error: null };
+      return { 
+        data: data ? this.mapToExpense(data) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error updating expense:', error);
       const serviceError: ExpenseServiceError = {
@@ -226,8 +242,9 @@ export class ExpenseService {
     }
   }
 
+  // Validation methods
   static validateExpenseDescription(description: string): boolean {
-    return description.length > 0 && description.length <= 255;
+    return description.length <= 500;
   }
 
   static validateExpenseAmount(amount: number, maxAmount: number = 1000000): boolean {
@@ -241,11 +258,13 @@ export class ExpenseService {
       amount: data.amount,
       currency: data.currency || 'USD',
       description: data.description || '',
-      category: data.category_id?.toString() || 'other',
+      categoryId: data.category_id,
       date: new Date(data.date),
+      location: data.location,
+      source: data.source,
       calculationId: data.calculation_id,
-      createdAt: new Date(data.created_at || new Date()),
-      updatedAt: new Date(data.created_at || new Date()),
+      createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
     };
   }
 }

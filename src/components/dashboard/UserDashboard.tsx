@@ -44,20 +44,38 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
 
     try {
       const [calculationsResult, favoritesResult] = await Promise.all([
-        UserDataService.getTaxCalculations(user.id),
-        UserDataService.getFavorites(user.id)
+        UserDataService.getUserDataByType(user.id, 'tax_calculation'),
+        UserDataService.getFavoriteUserData(user.id)
       ]);
 
       if (calculationsResult.error) {
         setError('Failed to load saved calculations');
       } else {
-        setSavedCalculations(calculationsResult.data || []);
+        // Transform UserData to SavedData format
+        const transformedCalculations = (calculationsResult.data || []).map(calc => ({
+          id: calc.id,
+          data_name: calc.dataName,
+          data_content: calc.dataContent,
+          is_favorite: calc.isFavorite,
+          created_at: calc.createdAt.toISOString(),
+          updated_at: calc.updatedAt.toISOString(),
+        }));
+        setSavedCalculations(transformedCalculations);
       }
 
       if (favoritesResult.error) {
         setError('Failed to load favorites');
       } else {
-        setFavorites(favoritesResult.data || []);
+        // Transform UserData to SavedData format
+        const transformedFavorites = (favoritesResult.data || []).map(calc => ({
+          id: calc.id,
+          data_name: calc.dataName,
+          data_content: calc.dataContent,
+          is_favorite: calc.isFavorite,
+          created_at: calc.createdAt.toISOString(),
+          updated_at: calc.updatedAt.toISOString(),
+        }));
+        setFavorites(transformedFavorites);
       }
     } catch (err) {
       setError('Failed to load user data');
@@ -90,7 +108,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
     );
 
     try {
-      const { error } = await UserDataService.updateFavoriteStatus(dataId, !isFavorite);
+      const { error } = await UserDataService.updateUserData(dataId, { isFavorite: !isFavorite });
       if (error) {
         setError('Failed to update favorite status');
         // Revert local state if backend fails
@@ -133,7 +151,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
     }
 
     try {
-      const { error } = await UserDataService.deleteSavedData(dataId);
+      const { error } = await UserDataService.deleteUserData(dataId);
       
       if (error) {
         setError('Failed to delete calculation');
@@ -150,7 +168,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
     if (!user) return;
 
     try {
-      const { data, error } = await UserDataService.exportUserData(user.id);
+      // Get all user data for export
+      const { data, error } = await UserDataService.getUserDataByUserId(user.id);
       
       if (error) {
         setError('Failed to export data');
@@ -181,15 +200,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ onClose }) => {
       const text = await file.text();
       const importData = JSON.parse(text);
       
-      const { error } = await UserDataService.importUserData(user.id, importData);
-      
-      if (error) {
-        setError('Failed to import data: ' + error.message);
-      } else {
-        // Reload data to reflect changes
-        await loadUserData();
-        alert('Data imported successfully!');
-      }
+      // Import functionality not implemented yet
+      setError('Import functionality is not yet implemented');
     } catch (err) {
       setError('Failed to import data: Invalid file format');
     }

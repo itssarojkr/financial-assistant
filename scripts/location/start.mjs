@@ -31,7 +31,7 @@ async function main() {
   const envFile = path.join(__dirname, '.env');
   if (!fs.existsSync(envFile)) {
     console.log('❌ No .env file found in scripts directory');
-    console.log('💡 Run: node scripts/setup-localities.mjs');
+    console.log('💡 Run: node setup.mjs');
     rl.close();
     return;
   }
@@ -89,7 +89,7 @@ async function main() {
       console.log('🔄 Populating countries, states, and cities...');
       console.log('   This may take several minutes depending on the number of countries.');
       
-      const command = `node scripts/populate-locations.mjs`;
+      const command = `node populate.mjs`;
       console.log(`   Running: ${command}`);
       
       const { stdout, stderr } = await execAsync(command);
@@ -104,7 +104,7 @@ async function main() {
       console.log('   This may take 10-30 minutes depending on the number of cities.');
       console.log('   The script uses OpenStreetMap (free) and optionally Google Places API.');
       
-      const command = `node scripts/populate-localities.mjs ${countries.join(' ')}`;
+      const command = `node populate.mjs ${countries.join(' ')}`;
       console.log(`   Running: ${command}`);
       
       const { stdout, stderr } = await execAsync(command);

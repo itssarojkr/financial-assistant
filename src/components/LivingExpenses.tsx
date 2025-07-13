@@ -5,24 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-
-interface ExpenseData {
-  housing: number;
-  food: number;
-  transportation: number;
-  utilities: number;
-  healthcare: number;
-  entertainment: number;
-  other: number;
-  description: string;
-  total: number;
-}
-
-interface SalaryData {
-  country: string;
-  grossSalary: number;
-  currency: string;
-}
+import { ExpenseData, SalaryData } from '@/shared/types/common.types';
 
 interface LivingExpensesProps {
   salaryData: SalaryData;
@@ -37,9 +20,9 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({
   const [localExpenses, setLocalExpenses] = useState<ExpenseData>(expenseData);
 
   const expenseCategories = [
-    { key: 'housing', label: 'Housing (Rent/Mortgage)', description: 'Monthly rent or mortgage payment' },
+    { key: 'rent', label: 'Housing (Rent/Mortgage)', description: 'Monthly rent or mortgage payment' },
     { key: 'food', label: 'Food & Groceries', description: 'Monthly food and grocery expenses' },
-    { key: 'transportation', label: 'Transportation', description: 'Car payments, gas, public transport' },
+    { key: 'transport', label: 'Transportation', description: 'Car payments, gas, public transport' },
     { key: 'utilities', label: 'Utilities', description: 'Electricity, water, internet, phone' },
     { key: 'healthcare', label: 'Healthcare', description: 'Insurance, medical expenses' },
     { key: 'entertainment', label: 'Entertainment', description: 'Movies, dining out, hobbies' },
@@ -64,21 +47,17 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({
     });
   };
 
-  const handleSave = () => {
-    setExpenseData(localExpenses);
-  };
-
   const handleReset = () => {
     const resetExpenses: ExpenseData = {
-      housing: 0,
+      rent: 0,
       food: 0,
-      transportation: 0,
+      transport: 0,
       utilities: 0,
       healthcare: 0,
-      entertainment: 0,
       other: 0,
-      description: '',
-      total: 0
+      total: 0,
+      entertainment: 0,
+      description: ''
     };
     setLocalExpenses(resetExpenses);
     setExpenseData(resetExpenses);
@@ -137,9 +116,6 @@ const LivingExpenses: React.FC<LivingExpensesProps> = ({
         </div>
 
         <div className="flex gap-3">
-          <Button onClick={handleSave} className="flex-1">
-            Save Expenses
-          </Button>
           <Button onClick={handleReset} variant="outline" className="flex-1">
             Reset
           </Button>

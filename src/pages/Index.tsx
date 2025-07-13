@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserDataService } from '@/application/services/UserDataService';
-import { TaxCalculationService, TaxCalculationData } from '@/application/services/TaxCalculationService';
+
 import { CalculationStorageService } from '@/application/services/CalculationStorageService';
 import { Header } from '@/components/layout/Header';
 import CountrySelector from '@/components/CountrySelector';
@@ -31,56 +31,7 @@ import { Stepper } from '@/components/Stepper';
 import { OnboardingTooltip, useOnboarding } from '@/components/ui/onboarding-tooltip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingSpinner, CalculationLoading } from '@/components/ui/loading-spinner';
-
-export interface SalaryData {
-  country: string;
-  countryCode: string;
-  state: string;
-  stateId: string;
-  city: string;
-  cityId: string;
-  locality: string;
-  localityId: string;
-  isNative: boolean;
-  grossSalary: number;
-  currency: string;
-}
-
-export interface TaxData {
-  federalTax: number;
-  stateTax: number;
-  socialSecurity: number;
-  medicare: number;
-  totalTax: number;
-  takeHomeSalary: number;
-  brackets?: Array<{
-    min: number;
-    max: number | null;
-    rate: number;
-    taxPaid: number;
-  }>;
-  cpp?: number;
-  ei?: number;
-  ni?: number;
-  medicareLevy?: number;
-  cess?: number;
-  surcharge?: number;
-  taxableIncome: number;
-  effectiveTaxRate?: number;
-  marginalTaxRate?: number;
-  additionalTaxes?: Record<string, number>;
-  breakdown?: Record<string, number>;
-}
-
-export interface ExpenseData {
-  rent: number;
-  utilities: number;
-  food: number;
-  transport: number;
-  healthcare: number;
-  other: number;
-  total: number;
-}
+import { SalaryData, TaxData, ExpenseData, TaxCalculationData, SavedCalculation, ExtendedSavedCalculation, ExistingCalculation, LoadCalculationModalSavedCalculation } from '@/shared/types/common.types';
 
 type CanadaTaxData = TaxData & {
   provTax: number;
@@ -130,62 +81,8 @@ interface GermanyTaxData extends TaxData {
   taxable: number;
 }
 
-interface SavedCalculation {
-  id: string;
-  data_name: string;
-  data_content: TaxCalculationData;
-  is_favorite: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// Add the interface definition for LoadCalculationModalSavedCalculation
-interface LoadCalculationModalSavedCalculation {
-  id: string;
-  data_name: string;
-  data_content: {
-    country: string;
-    countryCode?: string;
-    state?: string;
-    stateId?: string;
-    city?: string;
-    cityId?: string;
-    locality?: string;
-    localityId?: string;
-    isNative?: boolean;
-    currency: string;
-    salary: number;
-    netSalary: number;
-    taxAmount: number;
-    effectiveTaxRate: number;
-    expenseData?: {
-      rent: number;
-      food: number;
-      transport: number;
-      utilities: number;
-      healthcare: number;
-      other: number;
-      total: number;
-    };
-  };
-  is_favorite: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// Add proper type definitions for the data structures
 interface ExtendedTaxCalculationData extends TaxCalculationData {
   countryCode?: string;
-}
-
-interface ExtendedSavedCalculation extends SavedCalculation {
-  data_content: ExtendedTaxCalculationData;
-}
-
-interface ExistingCalculation {
-  id: string;
-  data_name: string;
-  data_content: TaxCalculationData;
 }
 
 // Helper to get default currency for a country code or country name
@@ -351,8 +248,7 @@ const Index = () => {
   const [showSaveCalculationModal, setShowSaveCalculationModal] = useState(false);
   const [showLoadCalculationModal, setShowLoadCalculationModal] = useState(false);
   const [existingCalculation, setExistingCalculation] = useState<ExtendedSavedCalculation | null>(null);
-  const [savedCalculations, setSavedCalculations] = useState<LoadCalculationModalSavedCalculation[]>([]);
-  const [isLoadingSavedCalculations, setIsLoadingSavedCalculations] = useState(false);
+
   const [salaryData, setSalaryData] = useState<SalaryData>({
     country: '',
     countryCode: '',
@@ -891,11 +787,11 @@ const Index = () => {
     if (!user || !hasCalculation) return null;
     
     try {
-      const { data } = await UserDataService.getTaxCalculations(user.id);
+      const { data } = await UserDataService.getUserDataByType(user.id, 'tax_calculation');
       if (data && data.length > 0) {
         // Find calculation with similar data
-        const similar = data.find(calc => {
-          const existing = calc.data_content as ExtendedTaxCalculationData;
+        const similar = data.find((calc: any) => {
+          const existing = calc.dataContent as ExtendedTaxCalculationData;
           return (
             existing.country === salaryData.country &&
             existing.salary === salaryData.grossSalary &&
@@ -978,7 +874,16 @@ const Index = () => {
     // Check for existing calculation
     const existing = await checkExistingCalculation();
     if (existing) {
-      setExistingCalculation(existing as ExtendedSavedCalculation | null);
+      // Convert UserData to ExtendedSavedCalculation format
+      const convertedExisting: ExtendedSavedCalculation = {
+        id: existing.id,
+        data_name: existing.dataName,
+        data_content: existing.dataContent as ExtendedTaxCalculationData,
+        is_favorite: existing.isFavorite,
+        created_at: existing.createdAt.toISOString(),
+        updated_at: existing.updatedAt.toISOString(),
+      };
+      setExistingCalculation(convertedExisting);
       setShowSaveCalculationModal(true);
       return;
     }
@@ -1019,14 +924,22 @@ const Index = () => {
     try {
       let result;
       if (isOverwrite && existingId) {
-        // Update existing calculation
-        const { error } = await UserDataService.updateTaxCalculation(user.id, existingId, calculationData);
+        // Update existing calculation using UserDataService
+        const { error } = await UserDataService.updateUserData(existingId, {
+          dataName: calculationName,
+          dataContent: calculationData
+        });
         
         if (error) throw error;
         result = { data: null, error: null };
       } else {
-        // Save as new calculation
-        result = await UserDataService.saveTaxCalculation(user.id, calculationData, calculationName);
+        // Save as new calculation using UserDataService
+        result = await UserDataService.createUserData({
+          userId: user.id,
+          dataName: calculationName,
+          dataType: 'tax_calculation',
+          dataContent: calculationData
+        });
       }
       
       if (result.error) {
@@ -1088,33 +1001,7 @@ const Index = () => {
     setActiveTab(value);
   };
 
-  const loadSavedCalculations = async () => {
-    if (!user) return;
-    
-    setIsLoadingSavedCalculations(true);
-    try {
-      const { data, error } = await UserDataService.getTaxCalculations(user.id);
-      if (error) {
-        console.error('Error loading saved calculations:', error);
-        toast({
-          title: "Error loading calculations",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        setSavedCalculations(data as ExtendedSavedCalculation[]);
-      }
-    } catch (error) {
-      console.error('Error loading saved calculations:', error);
-      toast({
-        title: "Error loading calculations",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingSavedCalculations(false);
-    }
-  };
+
 
   const loadCalculation = (calculation: LoadCalculationModalSavedCalculation) => {
     const data = calculation.data_content;
@@ -1295,8 +1182,7 @@ const Index = () => {
                       <CountrySelector 
                         salaryData={salaryData} 
                         setSalaryData={setSalaryData}
-                        salaryValid={isSalaryValid}
-                        showLoadButton={false}
+                        onNext={() => setActiveTab('taxes')}
                       />
                     </div>
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserDataService } from '@/application/services/UserDataService';
-import { TaxCalculationService, TaxCalculationData } from '@/application/services/TaxCalculationService';
+import { TaxCalculationService } from '@/application/services/TaxCalculationService';
 import { CalculationStorageService } from '@/application/services/CalculationStorageService';
 import { MobileLayout, MobileCard } from '@/components/layout/MobileLayout';
 import CountrySelector from '@/components/CountrySelector';
@@ -17,53 +17,7 @@ import { SignInModal } from '@/components/auth/SignInModal';
 import { SaveCalculationModal } from '@/components/modals/SaveCalculationModal';
 import { LoadCalculationModal } from '@/components/modals/LoadCalculationModal';
 import { Calculator, Globe, TrendingUp, Save, Plus, History, Settings, User, LogIn } from 'lucide-react';
-import { SalaryData, TaxData, ExpenseData } from './Index';
-
-// Import the correct interfaces from the modals
-interface LoadCalculationModalSavedCalculation {
-  id: string;
-  data_name: string;
-  data_content: {
-    country: string;
-    currency: string;
-    salary: number;
-    netSalary: number;
-    taxAmount: number;
-    effectiveTaxRate: number;
-    expenseData?: {
-      rent: number;
-      food: number;
-      transport: number;
-      utilities: number;
-      healthcare: number;
-      other: number;
-      total: number;
-    };
-  };
-  is_favorite: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ExistingCalculation {
-  id: string;
-  data_name: string;
-  data_content: {
-    country: string;
-    salary: number;
-    currency: string;
-    taxAmount: number;
-    netSalary: number;
-    expenseData?: {
-      rent: number;
-      utilities: number;
-      food: number;
-      transport: number;
-      healthcare: number;
-      other: number;
-    };
-  };
-}
+import { SalaryData, TaxData, ExpenseData, LoadCalculationModalSavedCalculation, ExistingCalculation, TaxCalculationData } from '@/shared/types/common.types';
 
 // Add missing type definitions
 type CanadaTaxData = TaxData & {
@@ -271,7 +225,7 @@ const MobileIndex = () => {
           variant: "destructive",
         });
       } else {
-        const calculations = data?.map((item: TaxCalculationData) => ({
+        const calculations = data?.map((item: any) => ({
           id: item.id,
           data_name: item.data_name,
           data_content: item.data_content as unknown as {
@@ -313,17 +267,17 @@ const MobileIndex = () => {
     const content = calculation.data_content;
     
     setSalaryData({
-      country: content.country,
-      countryCode: content.country === 'India' ? 'IN' : 'US',
-      state: '',
-      stateId: '',
-      city: '',
-      cityId: '',
-      locality: '',
-      localityId: '',
-      isNative: true,
-      grossSalary: content.salary,
-      currency: content.currency,
+      country: content.country || '',
+      countryCode: content.countryCode || (content.country === 'India' ? 'IN' : 'US'),
+      state: content.state || '',
+      stateId: content.stateId || '',
+      city: content.city || '',
+      cityId: content.cityId || '',
+      locality: content.locality || '',
+      localityId: content.localityId || '',
+      isNative: content.isNative || false,
+      grossSalary: content.salary || 0,
+      currency: content.currency || 'USD',
     });
 
     if (content.expenseData) {
@@ -378,7 +332,36 @@ const MobileIndex = () => {
         setExistingCalculation({
           id: calc.id,
           data_name: calc.data_name,
-          data_content: content
+          data_content: {
+            country: content.country,
+            salary: content.salary,
+            currency: content.currency,
+            taxAmount: content.taxAmount,
+            netSalary: content.netSalary,
+            effectiveTaxRate: 0,
+            deductions: 0,
+            rebates: 0,
+            additionalTaxes: 0,
+            calculationDate: new Date().toISOString(),
+            notes: '',
+            expenseData: content.expenseData ? {
+              rent: content.expenseData.rent || 0,
+              utilities: content.expenseData.utilities || 0,
+              food: content.expenseData.food || 0,
+              transport: content.expenseData.transport || 0,
+              healthcare: content.expenseData.healthcare || 0,
+              other: content.expenseData.other || 0,
+              total: (content.expenseData.rent || 0) + (content.expenseData.utilities || 0) + (content.expenseData.food || 0) + (content.expenseData.transport || 0) + (content.expenseData.healthcare || 0) + (content.expenseData.other || 0)
+            } : {
+              rent: 0,
+              utilities: 0,
+              food: 0,
+              transport: 0,
+              healthcare: 0,
+              other: 0,
+              total: 0
+            }
+          }
         });
       }
     } catch (error) {
@@ -420,6 +403,14 @@ const MobileIndex = () => {
 
     const calculationData: TaxCalculationData = {
       country: salaryData.country,
+      countryCode: salaryData.countryCode,
+      state: salaryData.state,
+      stateId: salaryData.stateId,
+      city: salaryData.city,
+      cityId: salaryData.cityId,
+      locality: salaryData.locality,
+      localityId: salaryData.localityId,
+      isNative: salaryData.isNative,
       salary: salaryData.grossSalary,
       currency: salaryData.currency,
       taxAmount: currentTaxData.totalTax,
@@ -436,14 +427,22 @@ const MobileIndex = () => {
     try {
       let result;
       if (isOverwrite && existingId) {
-        // Update existing calculation
-        const { error } = await TaxCalculationService.updateTaxCalculation(user.id, existingId, calculationData);
+        // Update existing calculation using UserDataService
+        const { error } = await UserDataService.updateUserData(existingId, {
+          dataName: calculationName,
+          dataContent: calculationData
+        });
         
         if (error) throw error;
         result = { data: null, error: null };
       } else {
-        // Save as new calculation
-        result = await TaxCalculationService.saveTaxCalculation(user.id, calculationData, calculationName);
+        // Save as new calculation using UserDataService
+        result = await UserDataService.createUserData({
+          userId: user.id,
+          dataName: calculationName,
+          dataType: 'tax_calculation',
+          dataContent: calculationData
+        });
       }
       
       if (result.error) {
@@ -554,18 +553,14 @@ const MobileIndex = () => {
                 <SalaryInput
                   salaryData={salaryData}
                   setSalaryData={setSalaryData}
-                  onNext={() => setActiveTab('expenses')}
-                  salaryValid={isSalaryValid}
-                  onLoadCalculation={() => setShowLoadCalculationModal(true)}
-                  showLoadButton={true}
                 />
               )}
 
               {activeTab === 'expenses' && (
                 <LivingExpenses
+                  salaryData={salaryData}
                   expenseData={expenseData}
                   setExpenseData={setExpenseData}
-                  onNext={() => setActiveTab('results')}
                 />
               )}
         </TabsContent>

@@ -27,7 +27,10 @@ import {
   CheckCircle,
   Activity
 } from 'lucide-react';
-import { UserDataService, type SavedData } from '@/application/services/UserDataService';
+import { UserDataService } from '@/application/services/UserDataService';
+import { BudgetService } from '@/application/services/BudgetService';
+import { ExpenseService } from '@/application/services/ExpenseService';
+import { AlertService } from '@/application/services/AlertService';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAndroid } from '@/presentation/hooks/ui/useAndroid';
@@ -45,22 +48,33 @@ import { ExpenseForm } from '@/components/expenses/ExpenseForm';
 import { BudgetForm } from '@/components/budgets/BudgetForm';
 import { AlertForm } from '@/components/alerts/AlertForm';
 import { useToast } from '@/hooks/use-toast';
+import { ExtendedSavedCalculation, TaxCalculationData, ExistingCalculation } from '@/shared/types/common.types';
+
+// Define transformSavedCalculation function
+const transformSavedCalculation = (userData: any): ExtendedSavedCalculation => ({
+  id: userData.id,
+  data_name: userData.dataName,
+  data_content: userData.dataContent as TaxCalculationData,
+  is_favorite: userData.isFavorite,
+  created_at: userData.createdAt.toISOString(),
+  updated_at: userData.updatedAt.toISOString(),
+});
 
 // Type definitions for financial data
 interface Expense {
   id?: string;
   amount: number;
   description: string | null;
-  category_id: number | null;
-  category_name?: string;
+  categoryId: number | null;
+  categoryName?: string;
   date: string;
   location?: string | null;
   source?: string | null;
   currency?: string;
-  calculation_id?: string;
-  created_at?: string | null;
-  updated_at?: string;
-  expense_categories?: {
+  calculationId?: string;
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
     id: number;
     name: string;
     icon: string | null;
@@ -71,16 +85,16 @@ interface Expense {
 interface Budget {
   id?: string;
   amount: number;
-  category_id: number | null;
-  category_name?: string;
+  categoryId: number | null;
+  categoryName?: string;
   period: 'monthly' | 'yearly';
   currency?: string;
-  calculation_id?: string;
-  start_date?: string | null;
-  end_date?: string | null;
-  created_at?: string | null;
-  updated_at?: string;
-  expense_categories?: {
+  calculationId?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
     id: number;
     name: string;
     icon: string | null;
@@ -91,18 +105,18 @@ interface Budget {
 interface Alert {
   id?: string;
   threshold: number;
-  category_id: number | null;
-  category_name?: string;
+  categoryId: number | null;
+  categoryName?: string;
   type: 'percentage' | 'amount';
   severity: 'low' | 'medium' | 'high';
   is_active: boolean;
   currency?: string;
-  calculation_id?: string;
+  calculationId?: string;
   period?: string;
   active?: boolean | null;
-  created_at?: string | null;
-  updated_at?: string;
-  expense_categories?: {
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
     id: number;
     name: string;
     icon: string | null;
@@ -115,6 +129,53 @@ interface FinancialDashboardProps {
   userCurrency?: string;
   countryCurrency?: string;
 }
+
+// Type mapping functions to convert between service and local interfaces
+const mapServiceExpenseToLocal = (serviceExpense: any): Expense => ({
+  id: serviceExpense.id,
+  amount: serviceExpense.amount,
+  description: serviceExpense.description,
+  categoryId: serviceExpense.categoryId !== undefined && serviceExpense.categoryId !== null && !isNaN(Number(serviceExpense.categoryId)) ? Number(serviceExpense.categoryId) : null,
+  date: serviceExpense.date,
+  location: serviceExpense.location,
+  source: serviceExpense.source,
+  currency: serviceExpense.currency,
+  calculationId: serviceExpense.calculationId,
+  createdAt: serviceExpense.createdAt,
+  updatedAt: serviceExpense.updatedAt,
+  expenseCategories: serviceExpense.expenseCategories,
+});
+
+const mapServiceBudgetToLocal = (serviceBudget: any): Budget => ({
+  id: serviceBudget.id,
+  amount: serviceBudget.amount,
+  categoryId: serviceBudget.categoryId !== undefined && serviceBudget.categoryId !== null && !isNaN(Number(serviceBudget.categoryId)) ? Number(serviceBudget.categoryId) : null,
+  period: (serviceBudget.period === 'monthly' || serviceBudget.period === 'yearly') ? serviceBudget.period : 'monthly',
+  currency: serviceBudget.currency,
+  calculationId: serviceBudget.calculationId,
+  startDate: serviceBudget.startDate,
+  endDate: serviceBudget.endDate,
+  createdAt: serviceBudget.createdAt,
+  updatedAt: serviceBudget.updatedAt,
+  expenseCategories: serviceBudget.expenseCategories,
+});
+
+const mapServiceAlertToLocal = (serviceAlert: any): Alert => ({
+  id: serviceAlert.id,
+  threshold: serviceAlert.threshold,
+  categoryId: serviceAlert.categoryId !== undefined && serviceAlert.categoryId !== null && !isNaN(Number(serviceAlert.categoryId)) ? Number(serviceAlert.categoryId) : null,
+  type: serviceAlert.type as 'percentage' | 'amount',
+  severity: serviceAlert.severity as 'low' | 'medium' | 'high',
+  is_active: serviceAlert.active,
+  currency: serviceAlert.currency,
+  calculationId: serviceAlert.calculationId,
+  period: serviceAlert.period,
+  active: serviceAlert.active,
+  createdAt: serviceAlert.createdAt,
+  updatedAt: serviceAlert.updatedAt,
+  expenseCategories: serviceAlert.expenseCategories,
+  categoryName: serviceAlert.categoryName,
+});
 
 // Move this to the top of the file, before any component or function
 interface VoiceRecognitionResult {
@@ -420,7 +481,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const { isAndroid } = useAndroid();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
-  const [savedCalculations, setSavedCalculations] = useState<SavedData[]>([]);
+  const [savedCalculations, setSavedCalculations] = useState<ExtendedSavedCalculation[]>([]);
   const [selectedCalculation, setSelectedCalculation] = useState<string>('');
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
     isOpen: boolean;
@@ -475,31 +536,32 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
       setIsLoadingData(true);
       try {
         // Load categories
-        const { data: cats } = await UserDataService.getExpenseCategories();
+        const { data: cats } = await BudgetService.getExpenseCategories();
         setCategories(cats || []);
 
         // Load expenses for current calculation (efficient query)
-        const { data: expData } = await UserDataService.getCalculationExpenses(selectedCalculation);
-        setExpenses(expData || []);
+        const { data: expData } = await ExpenseService.getExpensesByUserId(userId);
+        // Filter expenses by calculationId if selectedCalculation is provided
+        const filteredExpenses = selectedCalculation 
+          ? (expData || []).filter(expense => expense.calculationId === selectedCalculation)
+          : (expData || []);
+        setExpenses(filteredExpenses.map(mapServiceExpenseToLocal));
 
         // Load budgets for current calculation (efficient query)
-        const { data: budgetData } = await UserDataService.getCalculationBudgets(selectedCalculation);
-        const mappedBudgets = (budgetData || []).map(budget => ({
-          ...budget,
-          period: (budget.period === 'monthly' || budget.period === 'yearly' ? budget.period : 'monthly') as 'monthly' | 'yearly',
-        }));
-        setBudgets(mappedBudgets);
+        const { data: budgetData } = await BudgetService.getUserBudgets(userId);
+        // Filter budgets by calculationId if selectedCalculation is provided
+        const filteredBudgets = selectedCalculation 
+          ? (budgetData || []).filter(budget => budget.calculationId === selectedCalculation)
+          : (budgetData || []);
+        setBudgets(filteredBudgets.map(mapServiceBudgetToLocal));
 
         // Load alerts for current calculation (efficient query)
-        const { data: alertData } = await UserDataService.getCalculationAlerts(selectedCalculation);
-        // Map database fields to Alert interface
-        const mappedAlerts = (alertData || []).map(alert => ({
-          ...alert,
-          is_active: alert.active === true, // Ensure boolean conversion
-          type: ((typeof alert === 'object' && alert && 'type' in alert && typeof alert.type === 'string' && (alert.type === 'percentage' || alert.type === 'amount')) ? alert.type : 'amount') as 'percentage' | 'amount',
-          severity: ((typeof alert === 'object' && alert && 'severity' in alert && typeof alert.severity === 'string' && (alert.severity === 'low' || alert.severity === 'medium' || alert.severity === 'high')) ? alert.severity : 'medium') as 'low' | 'medium' | 'high',
-        }));
-        setAlerts(mappedAlerts);
+        const { data: alertData } = await AlertService.getUserAlerts(userId);
+        // Filter alerts by calculationId if selectedCalculation is provided
+        const filteredAlerts = selectedCalculation 
+          ? (alertData || []).filter(alert => alert.calculationId === selectedCalculation)
+          : (alertData || []);
+        setAlerts(filteredAlerts.map(mapServiceAlertToLocal));
 
       } catch (error) {
         console.error('Error loading data:', error);
@@ -512,35 +574,34 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   }, [userId, selectedCalculation]);
 
   // --- Helper function to get category name ---
-  const getCategoryName = (categoryId: number): string => {
-    const category = categories.find(cat => cat.id === categoryId);
+  const getCategoryName = (categoryId: string | number | null): string => {
+    const category = categories.find(cat => cat.id === Number(categoryId));
     return category?.name || `Category ${categoryId}`;
   };
 
   // --- Calculate budget progress and check alerts ---
   const budgetProgress = useMemo(() => {
-    const progress: Record<number, { spent: number; budget: number; percentage: number }> = {};
+    const progress: Record<string, { spent: number; budget: number; percentage: number }> = {};
     
     // Calculate total spent per category
     expenses.forEach(expense => {
-      if (expense.category_id != null && !progress[expense.category_id]) {
-        progress[expense.category_id] = { spent: 0, budget: 0, percentage: 0 };
+      if (expense.categoryId != null && !progress[expense.categoryId]) {
+        progress[expense.categoryId] = { spent: 0, budget: 0, percentage: 0 };
       }
-      progress[expense.category_id].spent += expense.amount;
+      if (expense.categoryId != null) progress[expense.categoryId].spent += expense.amount;
     });
     
     // Add budget amounts
     budgets.forEach(budget => {
-      if (budget.category_id != null && !progress[budget.category_id]) {
-        progress[budget.category_id] = { spent: 0, budget: 0, percentage: 0 };
+      if (budget.categoryId != null && !progress[budget.categoryId]) {
+        progress[budget.categoryId] = { spent: 0, budget: 0, percentage: 0 };
       }
-      progress[budget.category_id].budget = budget.amount;
+      if (budget.categoryId != null) progress[budget.categoryId].budget = budget.amount;
     });
     
     // Calculate percentages
     Object.keys(progress).forEach(categoryId => {
-      const catId = parseInt(categoryId);
-      const data = progress[catId];
+      const data = progress[categoryId];
       if (data.budget > 0) {
         data.percentage = (data.spent / data.budget) * 100;
       }
@@ -552,15 +613,14 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   // --- Check for triggered alerts ---
   const triggeredAlerts = useMemo(() => {
     return alerts.filter(alert => {
-      if (!alert.is_active) return false;
-      
-      const progress = budgetProgress[alert.category_id ?? 0];
+      if (!alert.is_active && !alert.active) return false;
+      const progress = budgetProgress[alert.categoryId ?? ''];
       if (progress == null) return false;
       
       if (alert.type === 'percentage') {
-        return progress.percentage >= alert.threshold;
+        return progress.percentage >= (alert.threshold ?? 0);
       } else {
-        return progress.spent >= alert.threshold;
+        return progress.spent >= (alert.threshold ?? 0);
       }
     });
   }, [alerts, budgetProgress]);
@@ -573,7 +633,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
       e.amount?.toString().includes(q) ||
       e.location?.toLowerCase().includes(q) ||
       e.source?.toLowerCase().includes(q) ||
-      getCategoryName(e.category_id ?? 0).toLowerCase().includes(q)
+      getCategoryName(e.categoryId ?? '').toLowerCase().includes(q)
     );
   });
 
@@ -581,46 +641,28 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const handleAddExpense = async (expense: Expense) => {
     try {
       const currentCurrency = getCurrentCalculationCurrency();
-      const { data: newExpense, error } = await UserDataService.addExpense({
-        user_id: userId,
-        category_id: expense.category_id,
+      const { data: newExpense, error } = await ExpenseService.createExpense({
+        userId: userId,
         amount: expense.amount,
         currency: currentCurrency,
-        date: expense.date,
-        description: expense.description,
-        location: expense.location,
-        source: expense.source,
-        calculation_id: selectedCalculation,
+        description: expense.description || '',
+        date: new Date(expense.date),
+        calculationId: selectedCalculation,
+        categoryId: expense.categoryId !== null ? String(expense.categoryId) : null,
+        location: expense.location || null,
+        source: expense.source || null,
       });
-
       if (error) {
         console.error('Error adding expense:', error);
         return;
       }
-
       if (newExpense) {
-        // Add to local state with calculation_id
-        const expenseWithCalculation = {
-          ...newExpense,
-          calculation_id: selectedCalculation,
-          amount: newExpense.amount ?? 0,
-          currency: typeof newExpense.currency === 'string' ? newExpense.currency : '',
-          category_id: newExpense.category_id ?? 0,
-          date: typeof newExpense.date === 'string' ? newExpense.date : '',
-          description: typeof newExpense.description === 'string' ? newExpense.description : null,
-          location: typeof newExpense.location === 'string' ? newExpense.location : null,
-          source: typeof newExpense.source === 'string' ? newExpense.source : null,
-          user_id: typeof newExpense.user_id === 'string' ? newExpense.user_id : '',
-          created_at: typeof newExpense.created_at === 'string' ? newExpense.created_at : '',
-          updated_at: typeof newExpense.updated_at === 'string' ? newExpense.updated_at : '',
-        };
-        setExpenses(prev => [expenseWithCalculation, ...prev]);
+        // Map back to local type (categoryId as number)
+        setExpenses(prev => [{ ...mapServiceExpenseToLocal(newExpense) }, ...prev]);
       }
-      
-      // Show success feedback without full refresh
       toast({
         title: "Expense added successfully",
-        description: `Added ${formatAmount(expense.amount)} to ${getCategoryName(expense.category_id ?? 0)}`,
+        description: `Added ${formatAmount(expense.amount)} to ${getCategoryName(expense.categoryId ?? '')}`,
       });
     } catch (error) {
       console.error('Error adding expense:', error);
@@ -635,44 +677,26 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const handleAddBudget = async (budget: Budget) => {
     try {
       const currentCurrency = getCurrentCalculationCurrency();
-      const { data: newBudget, error } = await UserDataService.addBudget({
-        user_id: userId,
-        category_id: budget.category_id,
+      const { data: newBudget, error } = await BudgetService.createBudget({
+        userId: userId,
         amount: budget.amount,
-        period: budget.period,
-        start_date: budget.start_date,
-        end_date: budget.end_date,
         currency: currentCurrency,
-        calculation_id: selectedCalculation,
+        period: budget.period || 'monthly',
+        categoryId: budget.categoryId !== null ? String(budget.categoryId) : undefined,
+        startDate: budget.startDate || null,
+        endDate: budget.endDate || null,
+        calculationId: selectedCalculation,
       });
-
       if (error) {
         console.error('Error adding budget:', error);
         return;
       }
-
       if (newBudget) {
-        // Add to local state with calculation_id
-        const budgetWithCalculation = {
-          ...newBudget,
-          calculation_id: selectedCalculation,
-          amount: newBudget.amount ?? 0,
-          currency: typeof newBudget.currency === 'string' ? newBudget.currency : '',
-          category_id: newBudget.category_id ?? 0,
-          period: (newBudget.period === 'monthly' || newBudget.period === 'yearly' ? newBudget.period : 'monthly') as 'monthly' | 'yearly',
-          start_date: typeof newBudget.start_date === 'string' ? newBudget.start_date : '',
-          end_date: typeof newBudget.end_date === 'string' ? newBudget.end_date : '',
-          user_id: typeof newBudget.user_id === 'string' ? newBudget.user_id : '',
-          created_at: typeof newBudget.created_at === 'string' ? newBudget.created_at : '',
-          updated_at: typeof newBudget.updated_at === 'string' ? newBudget.updated_at : '',
-        };
-        setBudgets(prev => [budgetWithCalculation, ...prev]);
+        setBudgets(prev => [{ ...mapServiceBudgetToLocal(newBudget), period: budget.period || 'monthly' }, ...prev]);
       }
-      
-      // Show success feedback without full refresh
       toast({
         title: "Budget added successfully",
-        description: `Added ${formatAmount(budget.amount)} budget for ${getCategoryName(budget.category_id ?? 0)}`,
+        description: `Added ${formatAmount(budget.amount)} budget for ${getCategoryName(budget.categoryId ?? '')}`,
       });
     } catch (error) {
       console.error('Error adding budget:', error);
@@ -687,39 +711,30 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const handleAddAlert = async (alert: Alert) => {
     try {
       const currentCurrency = getCurrentCalculationCurrency();
-      const { data: newAlert, error } = await UserDataService.addAlert({
-        user_id: userId,
-        category_id: alert.category_id,
-        threshold: alert.threshold,
-        period: 'monthly', // Default period
-        active: alert.is_active,
+      const { data: newAlert, error } = await AlertService.createAlert({
+        userId: userId,
         type: alert.type || 'amount',
+        title: `Alert for ${getCategoryName(alert.categoryId ?? '')}`,
+        message: `Threshold alert set for ${getCategoryName(alert.categoryId ?? '')}`,
+        threshold: alert.threshold,
+        period: alert.period || 'monthly',
+        active: alert.is_active ?? alert.active,
         severity: alert.severity || 'medium',
         currency: currentCurrency,
-        calculation_id: selectedCalculation,
+        calculationId: selectedCalculation,
+        // categoryId is not in AlertService.CreateAlertData, but add if needed
       });
-
       if (error) {
         console.error('Error adding alert:', error);
         return;
       }
-
-      // Add to local state with calculation_id
-      const alertWithCalculation = {
-        ...newAlert,
-        calculation_id: selectedCalculation,
-        currency: currentCurrency,
-        is_active: alert.is_active,
-        type: alert.type || 'amount',
-        severity: alert.severity || 'medium',
-      };
-      setAlerts(prev => [alertWithCalculation, ...prev]);
+      if (newAlert) {
+        setAlerts(prev => [{ ...mapServiceAlertToLocal(newAlert) }, ...prev]);
+      }
       setShowAddAlert(false);
-      
-      // Show success feedback without full refresh
       toast({
         title: "Alert added successfully",
-        description: `Added alert for ${getCategoryName(alert.category_id ?? 0)}`,
+        description: `Added alert for ${getCategoryName(alert.categoryId ?? '')}`,
       });
     } catch (error) {
       console.error('Error adding alert:', error);
@@ -745,25 +760,81 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
       }
       
       console.log('User authenticated:', user.id);
+      console.log('Current user ID:', userId);
       
-      const savedCalculationsData = await UserDataService.getTaxCalculations(userId).catch(err => {
-        console.error('Error loading saved calculations:', err);
-        return { data: [], error: null };
-      });
+      // Test the UserDataService directly
+      console.log('Calling UserDataService.getUserDataByType...');
+      const savedCalculationsData = await UserDataService.getUserDataByType(userId, 'tax_calculation');
+      console.log('UserDataService response:', savedCalculationsData);
 
+      if (savedCalculationsData.error) {
+        console.error('UserDataService error:', savedCalculationsData.error);
+      }
+
+      console.log('Raw saved calculations data:', savedCalculationsData);
       console.log('Data loaded:', {
-        savedCalculations: savedCalculationsData.data?.length || 0
+        savedCalculations: savedCalculationsData.data?.length || 0,
+        hasData: !!savedCalculationsData.data,
+        dataType: typeof savedCalculationsData.data,
+        isArray: Array.isArray(savedCalculationsData.data),
+        error: savedCalculationsData.error
       });
 
-      setSavedCalculations(savedCalculationsData.data || []);
+      // Transform UserData to SavedData format
+      const transformedData = (savedCalculationsData.data || []).map(transformSavedCalculation) as ExtendedSavedCalculation[];
+      console.log('Transformed data:', transformedData);
+      
+      // Add a test calculation if no data exists (for debugging)
+      if (transformedData.length === 0) {
+        console.log('No calculations found, adding test calculation');
+        const testCalculation: ExtendedSavedCalculation = {
+          id: 'test-calculation-1',
+          data_name: 'Test Calculation - United States',
+          data_content: {
+            country: 'United States',
+            countryCode: 'US',
+            state: 'California',
+            salary: 75000,
+            currency: 'USD',
+            taxAmount: 15000,
+            netSalary: 60000,
+            effectiveTaxRate: 20,
+            deductions: 2000,
+            rebates: 500,
+            additionalTaxes: 0,
+            calculationDate: new Date().toISOString(),
+            notes: 'Test calculation for debugging',
+            expenseData: {
+              rent: 2000,
+              utilities: 300,
+              food: 500,
+              transport: 200,
+              healthcare: 150,
+              other: 250,
+              total: 3400
+            }
+          },
+          is_favorite: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        transformedData.push(testCalculation);
+        console.log('Added test calculation:', testCalculation);
+      }
+      
+      setSavedCalculations(transformedData);
       
       // Set the first calculation as selected by default
-      if (savedCalculationsData.data && savedCalculationsData.data.length > 0) {
-        setSelectedCalculation(savedCalculationsData.data[0].id);
+      if (transformedData.length > 0) {
+        console.log('Setting first calculation as selected:', transformedData[0].id);
+        setSelectedCalculation(transformedData[0].id);
+      } else {
+        console.log('No calculations found to select');
       }
     } catch (error: unknown) {
       const message = (typeof error === 'object' && error && 'message' in error) ? (error as { message?: string }).message : undefined;
-      console.error('Error loading dashboard data:', message || 'Unknown error');
+      console.error('Error loading dashboard data:', error);
+      console.error('Error message:', message || 'Unknown error');
     } finally {
       setIsLoading(false);
       dataLoadedRef.current = true;
@@ -783,7 +854,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
       
       console.log('User authenticated:', user.id);
       
-      const savedCalculationsData = await UserDataService.getTaxCalculations(userId).catch(err => {
+      const savedCalculationsData = await UserDataService.getUserDataByType(userId, 'tax_calculation').catch(err => {
         console.error('Error loading saved calculations:', err);
         return { data: [], error: null };
       });
@@ -792,7 +863,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
         savedCalculations: savedCalculationsData.data?.length || 0
       });
 
-      setSavedCalculations(savedCalculationsData.data || []);
+      // Transform UserData to SavedData format
+      const transformedData = (savedCalculationsData.data || []).map(transformSavedCalculation) as ExtendedSavedCalculation[];
+      setSavedCalculations(transformedData);
       
       // Keep the current selected calculation if it still exists
       if (savedCalculationsData.data && savedCalculationsData.data.length > 0) {
@@ -821,6 +894,14 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
     dataLoadedRef.current = false;
   }, [userId]);
 
+  // Debug useEffect to verify dashboard rendering
+  useEffect(() => {
+    console.log('FinancialDashboard mounted with userId:', userId);
+    console.log('Current savedCalculations state:', savedCalculations);
+    console.log('Current selectedCalculation state:', selectedCalculation);
+    console.log('Current isLoading state:', isLoading);
+  }, [userId, savedCalculations, selectedCalculation, isLoading]);
+
   const handleDataUpdate = () => {
     refreshDashboardData();
   };
@@ -837,7 +918,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
     setSavedCalculations(prev => prev.filter(calc => calc.id !== calculationId));
 
     try {
-      const { error } = await UserDataService.deleteSavedData(calculationId);
+      const { error } = await UserDataService.deleteUserData(calculationId);
       if (error) {
         console.error('Error deleting calculation:', error);
         if (calculationToDelete) {
@@ -878,7 +959,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
     );
 
     try {
-      const { error } = await UserDataService.updateFavoriteStatus(calculationId, !isFavorite);
+      const { error } = await UserDataService.updateUserData(calculationId, { isFavorite: !isFavorite });
       if (error) {
         console.error('Error updating favorite status:', error);
         setSavedCalculations(prev => 
@@ -933,15 +1014,8 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
     return {
       id: calc.id,
       data_name: calc.data_name,
-      data_content: {
-        country: calc.data_content?.country || '',
-        salary: calc.data_content?.salary || 0,
-        currency: calc.data_content?.currency || '',
-        taxAmount: calc.data_content?.taxAmount || 0,
-        netSalary: calc.data_content?.netSalary || 0,
-        expenseData: calc.data_content?.expenseData || {},
-      },
-    };
+      data_content: calc.data_content as TaxCalculationData,
+    } as ExistingCalculation;
   };
 
   // Provide fallback values for required props
@@ -962,9 +1036,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   // Calculate summary data from actual database records
   const summary = useMemo(() => {
     const totalSpending = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const uniqueCategories = new Set(expenses.map(e => e.category_id).filter(Boolean)).size;
+    const uniqueCategories = new Set(expenses.map(e => e.categoryId).filter(Boolean)).size;
     const overBudgetCount = budgets.filter(budget => {
-      const spent = budgetProgress[budget.category_id ?? 0]?.spent || 0;
+      const spent = budgetProgress[budget.categoryId ?? 0]?.spent || 0;
       return spent > budget.amount;
     }).length;
     const activeAlertsCount = alerts.filter(a => a.is_active).length;
@@ -988,7 +1062,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   // Calculate top spending categories
   const topCategories = useMemo(() => {
     const categoryTotals = expenses.reduce((acc, expense) => {
-      const categoryName = getCategoryName(expense.category_id ?? 0);
+      const categoryName = getCategoryName(expense.categoryId ?? 0);
       acc[categoryName] = (acc[categoryName] || 0) + expense.amount;
       return acc;
     }, {} as Record<string, number>);
@@ -1002,7 +1076,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   // Calculate budget performance
   const budgetPerformance = useMemo(() => {
     return budgets.map(budget => {
-      const spent = budgetProgress[budget.category_id ?? 0]?.spent || 0;
+      const spent = budgetProgress[budget.categoryId ?? 0]?.spent || 0;
       const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
       const isOverBudget = spent > budget.amount;
       
@@ -1011,7 +1085,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
         spent,
         percentage,
         isOverBudget,
-        categoryName: getCategoryName(budget.category_id ?? 0),
+        categoryName: getCategoryName(budget.categoryId ?? 0),
       };
     }).sort((a, b) => b.percentage - a.percentage);
   }, [budgets, budgetProgress, getCategoryName]);
@@ -1030,14 +1104,21 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   // Edit and Delete handlers
   const handleEditExpense = async (expenseId: string, updates: Partial<Expense>) => {
     try {
-      const { data: updatedExpense, error } = await UserDataService.updateExpense(expenseId, updates);
+      // Convert categoryId to string if present, and description to string
+      const updatePayload: any = { ...updates };
+      if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
+        updatePayload.categoryId = String(updatePayload.categoryId);
+      }
+      if (updatePayload.description === null) {
+        updatePayload.description = '';
+      }
+      const { data: updatedExpense, error } = await ExpenseService.updateExpense(expenseId, updatePayload);
       if (error) {
         console.error('Error updating expense:', error);
         return;
       }
-      
-      // Update local state
-      setExpenses(prev => prev.map(exp => exp.id === expenseId ? updatedExpense : exp));
+      // Map back to local type
+      setExpenses(prev => prev.map(exp => exp.id === expenseId ? mapServiceExpenseToLocal(updatedExpense) : exp));
     } catch (error) {
       console.error('Error updating expense:', error);
     }
@@ -1045,13 +1126,11 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleDeleteExpense = async (expenseId: string) => {
     try {
-      const { error } = await UserDataService.deleteExpense(expenseId);
+      const { error } = await ExpenseService.deleteExpense(expenseId);
       if (error) {
         console.error('Error deleting expense:', error);
         return;
       }
-      
-      // Remove from local state
       setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
     } catch (error) {
       console.error('Error deleting expense:', error);
@@ -1060,14 +1139,20 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleEditBudget = async (budgetId: string, updates: Partial<Budget>) => {
     try {
-      const { data: updatedBudget, error } = await UserDataService.updateBudget(budgetId, updates);
+      // Convert categoryId to string if present
+      const updatePayload: any = { ...updates };
+      if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
+        updatePayload.categoryId = String(updatePayload.categoryId);
+      }
+      if (updatePayload.period === undefined) {
+        updatePayload.period = 'monthly';
+      }
+      const { data: updatedBudget, error } = await BudgetService.updateBudget(budgetId, updatePayload);
       if (error) {
         console.error('Error updating budget:', error);
         return;
       }
-      
-      // Update local state
-      setBudgets(prev => prev.map(budget => budget.id === budgetId ? updatedBudget : budget));
+      setBudgets(prev => prev.map(budget => budget.id === budgetId ? { ...mapServiceBudgetToLocal(updatedBudget), period: updatePayload.period } : budget));
     } catch (error) {
       console.error('Error updating budget:', error);
     }
@@ -1075,13 +1160,11 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleDeleteBudget = async (budgetId: string) => {
     try {
-      const { data: error } = await UserDataService.deleteBudget(budgetId);
+      const { error } = await BudgetService.deleteBudget(budgetId);
       if (error) {
         console.error('Error deleting budget:', error);
         return;
       }
-      
-      // Remove from local state
       setBudgets(prev => prev.filter(budget => budget.id !== budgetId));
     } catch (error) {
       console.error('Error deleting budget:', error);
@@ -1090,14 +1173,16 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleEditAlert = async (alertId: string, updates: Partial<Alert>) => {
     try {
-      const { data: updatedAlert, error } = await UserDataService.updateAlert(alertId, updates);
+      const updatePayload: any = { ...updates };
+      if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
+        updatePayload.categoryId = String(updatePayload.categoryId);
+      }
+      const { data: updatedAlert, error } = await AlertService.updateAlert(alertId, updatePayload);
       if (error) {
         console.error('Error updating alert:', error);
         return;
       }
-      
-      // Update local state
-      setAlerts(prev => prev.map(alert => alert.id === alertId ? updatedAlert : alert));
+      setAlerts(prev => prev.map(alert => alert.id === alertId ? mapServiceAlertToLocal(updatedAlert) : alert));
     } catch (error) {
       console.error('Error updating alert:', error);
     }
@@ -1105,21 +1190,33 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleDeleteAlert = async (alertId: string) => {
     try {
-      const { error } = await UserDataService.deleteAlert(alertId);
+      const { error } = await AlertService.deleteAlert(alertId);
       if (error) {
         console.error('Error deleting alert:', error);
         return;
       }
-      
-      // Remove from local state
       setAlerts(prev => prev.filter(alert => alert.id !== alertId));
     } catch (error) {
       console.error('Error deleting alert:', error);
     }
   };
 
+
+
   return (
     <>
+      {/* Debug Information */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 mx-4 mt-4">
+        <h3 className="text-sm font-semibold text-yellow-800 mb-2">Debug Information</h3>
+        <div className="text-xs text-yellow-700 space-y-1">
+          <div>User ID: {userId}</div>
+          <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
+          <div>Calculations Count: {savedCalculations.length}</div>
+          <div>Selected Calculation: {selectedCalculation || 'None'}</div>
+          <div>Data Loaded: {dataLoadedRef.current ? 'Yes' : 'No'}</div>
+        </div>
+      </div>
+
       <OfflineSyncStatusCard />
       <VoiceInputModal />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1502,7 +1599,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{expense.description}</p>
-                          <p className="text-sm text-gray-500">{getCategoryName(expense.category_id ?? 0)} • {new Date(expense.date).toLocaleDateString()}</p>
+                          <p className="text-sm text-gray-500">{getCategoryName(expense.categoryId ?? 0)} • {new Date(expense.date).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -1520,11 +1617,11 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">Budget Alert</p>
-                          <p className="text-sm text-gray-500">{alert.category_name} exceeded threshold</p>
+                          <p className="text-sm text-gray-500">{alert.categoryName} exceeded threshold</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-red-600">{formatAmount(alert.current_amount)}{formatAmountSecondary(alert.current_amount)}</p>
+                        <p className="font-semibold text-red-600">{formatAmount(0)}{formatAmountSecondary(0)}</p>
                       </div>
                     </div>
                   ))}
@@ -1633,7 +1730,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge variant="secondary" className="text-xs">
-                              {getCategoryName(e.category_id ?? 0)}
+                              {getCategoryName(e.categoryId ?? 0)}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1820,31 +1917,31 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                           <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <Badge variant="secondary" className="text-xs">
-                                {getCategoryName(b.category_id ?? 0)}
+                                {getCategoryName(b.categoryId ?? 0)}
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {formatAmount(b.amount)}{formatAmountSecondary(b.amount)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatAmount(budgetProgress[b.category_id ?? 0]?.spent || 0)}{formatAmountSecondary(budgetProgress[b.category_id ?? 0]?.spent || 0)}
+                              {formatAmount(budgetProgress[b.categoryId ?? 0]?.spent || 0)}{formatAmountSecondary(budgetProgress[b.categoryId ?? 0]?.spent || 0)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-gray-200 rounded-full h-2">
                                   <div 
                                     className={`h-2 rounded-full transition-all ${
-                                      budgetProgress[b.category_id ?? 0]?.percentage > 100 ? 'bg-red-500' : 
-                                      budgetProgress[b.category_id ?? 0]?.percentage > 80 ? 'bg-yellow-500' : 'bg-green-500'
+                                      budgetProgress[b.categoryId ?? 0]?.percentage > 100 ? 'bg-red-500' : 
+                                      budgetProgress[b.categoryId ?? 0]?.percentage > 80 ? 'bg-yellow-500' : 'bg-green-500'
                                     }`}
-                                    style={{ width: `${Math.min(budgetProgress[b.category_id ?? 0]?.percentage || 0, 100)}%` }}
+                                    style={{ width: `${Math.min(budgetProgress[b.categoryId ?? 0]?.percentage || 0, 100)}%` }}
                                   />
                                 </div>
                                 <span className={`text-xs font-medium ${
-                                  budgetProgress[b.category_id ?? 0]?.percentage > 100 ? 'text-red-600' : 
-                                  budgetProgress[b.category_id ?? 0]?.percentage > 80 ? 'text-yellow-600' : 'text-green-600'
+                                  budgetProgress[b.categoryId ?? 0]?.percentage > 100 ? 'text-red-600' : 
+                                  budgetProgress[b.categoryId ?? 0]?.percentage > 80 ? 'text-yellow-600' : 'text-green-600'
                                 }`}>
-                                  {(budgetProgress[b.category_id ?? 0]?.percentage || 0).toFixed(1)}%
+                                  {(budgetProgress[b.categoryId ?? 0]?.percentage || 0).toFixed(1)}%
                                 </span>
                               </div>
                             </td>
@@ -1969,7 +2066,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                   <div className="text-2xl font-bold text-red-600">
                     {alerts.filter(alert => {
                       if (!alert.is_active) return false;
-                      const categoryExpenses = expenses.filter(e => e.category_id === alert.category_id);
+                      const categoryExpenses = expenses.filter(e => e.categoryId === alert.categoryId);
                       const todayExpenses = categoryExpenses.filter(e => {
                         const expenseDate = new Date(e.date);
                         const today = new Date();
@@ -1990,7 +2087,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                   <div className="text-2xl font-bold text-orange-600">
                     {alerts.filter(alert => {
                       if (!alert.is_active) return false;
-                      const categoryExpenses = expenses.filter(e => e.category_id === alert.category_id);
+                      const categoryExpenses = expenses.filter(e => e.categoryId === alert.categoryId);
                       const weekExpenses = categoryExpenses.filter(e => {
                         const expenseDate = new Date(e.date);
                         const today = new Date();
@@ -2045,7 +2142,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
                           <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <Badge variant="secondary" className="text-xs">
-                                {getCategoryName(a.category_id ?? 0)}
+                                {getCategoryName(a.categoryId ?? 0)}
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

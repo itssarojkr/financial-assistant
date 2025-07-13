@@ -7,41 +7,7 @@ import { FolderOpen, Star, Calendar, DollarSign, TrendingUp, Loader2 } from 'luc
 import { UserDataService } from '@/application/services/UserDataService';
 import { useToast } from '@/hooks/use-toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
-
-interface TaxCalculationData {
-  country: string;
-  countryCode?: string;
-  state?: string;
-  stateId?: string;
-  city?: string;
-  cityId?: string;
-  locality?: string;
-  localityId?: string;
-  isNative?: boolean;
-  currency: string;
-  salary: number;
-  netSalary: number;
-  taxAmount: number;
-  effectiveTaxRate: number;
-  expenseData?: {
-    rent: number;
-    food: number;
-    transport: number;
-    utilities: number;
-    healthcare: number;
-    other: number;
-    total: number;
-  };
-}
-
-interface SavedCalculation {
-  id: string;
-  data_name: string;
-  data_content: TaxCalculationData | Record<string, unknown>;
-  is_favorite: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { SavedCalculation, TaxCalculationData } from '@/shared/types/common.types';
 
 interface LoadCalculationModalProps {
   isOpen: boolean;
@@ -65,7 +31,7 @@ export const LoadCalculationModal: React.FC<LoadCalculationModalProps> = ({
     
     setIsLoading(true);
     try {
-      const { data, error } = await UserDataService.getTaxCalculations(userId);
+      const { data, error } = await UserDataService.getUserDataByType(userId, 'tax_calculation');
       if (error) {
         console.error('Error loading saved calculations:', error);
         toast({
@@ -74,7 +40,16 @@ export const LoadCalculationModal: React.FC<LoadCalculationModalProps> = ({
           variant: "destructive",
         });
       } else {
-        setSavedCalculations((data || []) as SavedCalculation[]);
+        // Transform UserData to SavedCalculation format
+        const transformedData = (data || []).map(calc => ({
+          id: calc.id,
+          data_name: calc.dataName,
+          data_content: calc.dataContent as TaxCalculationData,
+          is_favorite: calc.isFavorite,
+          created_at: calc.createdAt.toISOString(),
+          updated_at: calc.updatedAt.toISOString(),
+        })) as SavedCalculation[];
+        setSavedCalculations(transformedData);
       }
     } catch (error) {
       console.error('Error loading saved calculations:', error);
@@ -136,7 +111,7 @@ export const LoadCalculationModal: React.FC<LoadCalculationModalProps> = ({
             ) : (
               <div className="space-y-4">
                 {savedCalculations.map((calculation) => {
-                  const data = calculation.data_content as TaxCalculationData;
+                  const data = calculation.data_content;
                   return (
                     <Card 
                       key={calculation.id} 

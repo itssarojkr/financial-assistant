@@ -1,16 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Budget, CreateBudgetParams, UpdateBudgetParams } from '@/core/domain/entities/Budget';
 import { PostgrestError } from '@supabase/supabase-js';
 
-export interface Budget {
+export interface BudgetData {
   id: string;
   user_id: string;
   amount: number;
   currency: string | null;
   period: string;
-  category_id?: number | null;
   start_date?: string | null;
   end_date?: string | null;
+  category_id?: number | null;
+  calculation_id?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -20,9 +22,10 @@ export interface CreateBudgetData {
   amount: number;
   currency: string;
   period: string;
-  categoryId?: number | null;
   startDate?: string | null;
   endDate?: string | null;
+  categoryId?: number | null;
+  calculationId?: string | null;
 }
 
 export interface ExpenseCategory {
@@ -61,16 +64,20 @@ export class BudgetService {
           amount: data.amount,
           currency: data.currency,
           period: data.period,
-          category_id: data.categoryId ?? null,
           start_date: data.startDate ?? null,
           end_date: data.endDate ?? null,
+          category_id: data.categoryId ?? null,
+          calculation_id: data.calculationId ?? null,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      return { data: budget, error: null };
+      return { 
+        data: budget ? this.mapToBudget(budget) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error creating budget:', error);
       const serviceError: BudgetServiceError = {
@@ -92,7 +99,8 @@ export class BudgetService {
 
       if (error) throw error;
 
-      return { data, error: null };
+      const budgets = data?.map(item => this.mapToBudget(item)) || [];
+      return { data: budgets, error: null };
     } catch (error) {
       console.error('Error fetching budgets:', error);
       const serviceError: BudgetServiceError = {
@@ -104,7 +112,7 @@ export class BudgetService {
     }
   }
 
-  static async updateBudget(id: string, updates: Partial<CreateBudgetData>): Promise<BudgetServiceResponse<Budget>> {
+  static async updateBudget(id: string, updates: UpdateBudgetParams): Promise<BudgetServiceResponse<Budget>> {
     try {
       const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
@@ -112,10 +120,10 @@ export class BudgetService {
 
       if (updates.amount !== undefined) updateData.amount = updates.amount;
       if (updates.currency !== undefined) updateData.currency = updates.currency;
-      if (updates.period !== undefined) updateData.period = updates.period;
-      if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId;
       if (updates.startDate !== undefined) updateData.start_date = updates.startDate;
       if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+      if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId;
+      if (updates.calculationId !== undefined) updateData.calculation_id = updates.calculationId;
 
       const { data, error } = await supabase
         .from('budgets')
@@ -126,7 +134,10 @@ export class BudgetService {
 
       if (error) throw error;
 
-      return { data, error: null };
+      return { 
+        data: data ? this.mapToBudget(data) : null, 
+        error: null 
+      };
     } catch (error) {
       console.error('Error updating budget:', error);
       const serviceError: BudgetServiceError = {
@@ -186,8 +197,7 @@ export class BudgetService {
       const { data: budgets, error: budgetError } = await supabase
         .from('budgets')
         .select('*')
-        .eq('user_id', userId)
-        .eq('period', period);
+        .eq('user_id', userId);
 
       if (budgetError) throw budgetError;
 
@@ -210,7 +220,7 @@ export class BudgetService {
         const percentageUsed = (totalSpent / budget.amount) * 100;
 
         return {
-          budget,
+          budget: this.mapToBudget(budget),
           totalSpent,
           remaining,
           percentageUsed,
@@ -228,5 +238,26 @@ export class BudgetService {
       };
       return { data: null, error: serviceError };
     }
+  }
+
+  private static mapToBudget(data: BudgetData): Budget {
+    const budget: Budget = {
+      id: data.id,
+      userId: data.user_id,
+      name: `Budget ${data.id.slice(0, 8)}`, // Generate a name since it doesn't exist in DB
+      amount: data.amount,
+      currency: data.currency || 'USD',
+      startDate: data.start_date ? new Date(data.start_date) : new Date(),
+      endDate: data.end_date ? new Date(data.end_date) : new Date(),
+      calculationId: data.calculation_id || null,
+      createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
+    };
+    
+    if (data.category_id) {
+      budget.categoryId = data.category_id.toString();
+    }
+    
+    return budget;
   }
 }

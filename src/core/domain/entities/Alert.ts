@@ -3,7 +3,7 @@ export class Alert {
   private constructor(
     public readonly id: string,
     public readonly userId: string,
-    public readonly type: 'spending' | 'budget' | 'tax' | 'system',
+    public readonly type: 'spending' | 'budget' | 'tax' | 'system' | 'amount' | 'percentage',
     public readonly severity: 'low' | 'medium' | 'high' | 'critical',
     public readonly title: string,
     public readonly message: string,
@@ -13,6 +13,7 @@ export class Alert {
     public readonly period?: string,
     public readonly active?: boolean,
     public readonly currency?: string,
+    public readonly calculationId?: string | null,
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
     public readonly metadata?: Record<string, unknown>
@@ -20,7 +21,7 @@ export class Alert {
 
   static create(params: {
     userId: string;
-    type: 'spending' | 'budget' | 'tax' | 'system';
+    type: 'spending' | 'budget' | 'tax' | 'system' | 'amount' | 'percentage';
     title: string;
     message: string;
     severity: 'low' | 'medium' | 'high' | 'critical';
@@ -30,6 +31,7 @@ export class Alert {
     period?: string;
     active?: boolean;
     currency?: string;
+    calculationId?: string | null;
     metadata?: Record<string, unknown>;
   }, id?: string): Alert {
     return new Alert(
@@ -45,6 +47,7 @@ export class Alert {
       params.period,
       params.active,
       params.currency,
+      params.calculationId,
       new Date(),
       new Date(),
       params.metadata
@@ -65,6 +68,7 @@ export class Alert {
       this.period,
       this.active,
       this.currency,
+      this.calculationId,
       this.createdAt,
       new Date(),
       this.metadata
@@ -85,6 +89,7 @@ export class Alert {
       this.period,
       this.active,
       this.currency,
+      this.calculationId,
       this.createdAt,
       new Date(),
       this.metadata
@@ -92,5 +97,5 @@ export class Alert {
   }
 }
 
-export type CreateAlertParams = Omit<Alert, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateAlertParams = Partial<Omit<Alert, 'id' | 'userId' | 'createdAt'>>;
+export type CreateAlertParams = Omit<Alert, 'id' | 'createdAt' | 'updatedAt'> & { calculationId?: string | null };
+export type UpdateAlertParams = Partial<Omit<Alert, 'id' | 'userId' | 'createdAt'>> & { calculationId?: string | null };

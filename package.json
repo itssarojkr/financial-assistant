@@ -19,7 +19,12 @@
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
     "cap:run:android": "cap run android",
-    "cap:run:ios": "cap run ios"
+    "cap:run:ios": "cap run ios",
+    "migrate:financial-dashboard": "powershell -ExecutionPolicy Bypass -File scripts/simple-migration.ps1",
+    "migrate:financial-dashboard:force": "powershell -ExecutionPolicy Bypass -File scripts/simple-migration.ps1 -Force",
+    "migrate:financial-dashboard:skip-backup": "powershell -ExecutionPolicy Bypass -File scripts/simple-migration.ps1 -SkipBackup",
+    "migrate:financial-dashboard:verbose": "powershell -ExecutionPolicy Bypass -File scripts/simple-migration.ps1 -Verbose",
+    "migrate:financial-dashboard:check": "powershell -ExecutionPolicy Bypass -File scripts/simple-migration.ps1 -Verbose"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^9.0.0",

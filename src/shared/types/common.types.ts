@@ -627,3 +627,124 @@ export type EntityId = string;
  * Timestamp type
  */
 export type Timestamp = Date | string | number; 
+
+// Unified ExpenseData interface for the entire application
+export interface ExpenseData {
+  // Core expense categories
+  rent: number;
+  utilities: number;
+  food: number;
+  transport: number;
+  healthcare: number;
+  other: number;
+  total: number;
+  
+  // Additional fields for LivingExpenses component
+  housing?: number;
+  transportation?: number;
+  entertainment?: number;
+  description?: string;
+}
+
+// Unified SalaryData interface
+export interface SalaryData {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateId: string;
+  city: string;
+  cityId: string;
+  locality: string;
+  localityId: string;
+  isNative: boolean;
+  grossSalary: number;
+  currency: string;
+}
+
+// Tax calculation data structure
+export interface TaxCalculationData {
+  country: string;
+  countryCode?: string;
+  state?: string;
+  stateId?: string;
+  city?: string;
+  cityId?: string;
+  locality?: string;
+  localityId?: string;
+  isNative?: boolean;
+  salary: number;
+  currency: string;
+  taxAmount: number;
+  netSalary: number;
+  effectiveTaxRate: number;
+  deductions?: number;
+  rebates?: number;
+  additionalTaxes?: number;
+  calculationDate?: string;
+  notes?: string;
+  expenseData?: ExpenseData;
+}
+
+// Tax data interface
+export interface TaxData {
+  federalTax: number;
+  stateTax: number;
+  socialSecurity: number;
+  medicare: number;
+  totalTax: number;
+  takeHomeSalary: number;
+  brackets?: Array<{
+    min: number;
+    max: number | null;
+    rate: number;
+    taxPaid: number;
+  }>;
+  cpp?: number;
+  ei?: number;
+  ni?: number;
+  medicareLevy?: number;
+  cess?: number;
+  surcharge?: number;
+  taxableIncome: number;
+  effectiveTaxRate?: number;
+  marginalTaxRate?: number;
+  additionalTaxes?: Record<string, number>;
+  breakdown?: Record<string, number>;
+}
+
+// Unified SavedCalculation interface for the entire application
+export interface SavedCalculation {
+  id: string;
+  data_name: string;
+  data_content: TaxCalculationData;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Extended SavedCalculation with additional properties
+export interface ExtendedSavedCalculation extends SavedCalculation {
+  data_content: TaxCalculationData & {
+    countryCode?: string;
+    stateId?: string;
+    cityId?: string;
+    localityId?: string;
+  };
+}
+
+// Interface for existing calculations (used in SaveCalculationModal)
+export interface ExistingCalculation {
+  id: string;
+  data_name: string;
+  data_content: TaxCalculationData;
+}
+
+// Interface for LoadCalculationModal (compatible with SavedCalculation)
+export interface LoadCalculationModalSavedCalculation {
+  id: string;
+  data_name: string;
+  data_content: TaxCalculationData;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+} 
