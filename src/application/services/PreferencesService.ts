@@ -44,25 +44,23 @@ export class PreferencesService {
         throw error;
       }
 
-      const preferences: UserPreferences = data ? {
-        userId: data.user_id,
-        theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
-        language: data.language || 'en',
-        currency: data.default_currency || 'USD',
-        notifications: this.parseNotifications(data.notifications),
-        smsScanning: data.sms_scanning_enabled || false,
-        createdAt: new Date(data.created_at || new Date()),
-        updatedAt: new Date(data.updated_at || new Date()),
-      } : {
-        userId,
-        theme: 'light',
-        language: 'en',
-        currency: 'USD',
-        notifications: { email: true, push: true, sms: false },
-        smsScanning: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const preferences: UserPreferences = data ? 
+        UserPreferences.create({
+          userId: data.user_id,
+          theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
+          language: data.language || 'en',
+          currency: data.default_currency || 'USD',
+          notifications: this.parseNotifications(data.notifications),
+          smsScanning: data.sms_scanning_enabled || false,
+        }) : 
+        UserPreferences.create({
+          userId,
+          theme: 'light',
+          language: 'en',
+          currency: 'USD',
+          notifications: { email: true, push: true, sms: false },
+          smsScanning: false,
+        });
 
       return { data: preferences, error: null };
     } catch (error) {
@@ -78,16 +76,15 @@ export class PreferencesService {
 
   static async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<PreferencesServiceResponse<UserPreferences>> {
     try {
-      const upsertData: Record<string, unknown> = {
+      const upsertData = {
         user_id: userId,
         updated_at: new Date().toISOString(),
+        theme: preferences.theme,
+        language: preferences.language,
+        default_currency: preferences.currency,
+        notifications: preferences.notifications,
+        sms_scanning_enabled: preferences.smsScanning,
       };
-
-      if (preferences.theme !== undefined) upsertData.theme = preferences.theme;
-      if (preferences.language !== undefined) upsertData.language = preferences.language;
-      if (preferences.currency !== undefined) upsertData.default_currency = preferences.currency;
-      if (preferences.notifications !== undefined) upsertData.notifications = preferences.notifications;
-      if (preferences.smsScanning !== undefined) upsertData.sms_scanning_enabled = preferences.smsScanning;
 
       const { data, error } = await supabase
         .from('user_preferences')
@@ -97,16 +94,14 @@ export class PreferencesService {
 
       if (error) throw error;
 
-      const updatedPreferences: UserPreferences = {
+      const updatedPreferences: UserPreferences = UserPreferences.create({
         userId: data.user_id,
         theme: (data.theme || 'light') as 'light' | 'dark' | 'system',
         language: data.language || 'en',
         currency: data.default_currency || 'USD',
         notifications: this.parseNotifications(data.notifications),
         smsScanning: Boolean(data.sms_scanning_enabled),
-        createdAt: new Date(data.created_at || ''),
-        updatedAt: new Date(data.updated_at || ''),
-      };
+      });
 
       return { data: updatedPreferences, error: null };
     } catch (error) {

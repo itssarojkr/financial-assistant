@@ -419,7 +419,7 @@ const Index = () => {
       default:
         console.warn('No tax data setter found for country:', salaryData.country);
     }
-  }, [salaryData.country, memoizedTaxData, setTaxDataIndia, setTaxDataUS, setTaxDataCanada, setTaxDataUK, setTaxDataAustralia, setTaxDataGermany, setTaxDataFrance, setTaxDataBrazil, setTaxDataSouthAfrica, defaultCanadaTaxData, defaultUKTaxData, defaultAustraliaTaxData, defaultGermanyTaxData, defaultFranceTaxData, defaultBrazilTaxData, defaultSouthAfricaTaxData]);
+  }, [salaryData.country, memoizedTaxData, setTaxDataIndia, setTaxDataUS, setTaxDataCanada, setTaxDataUK, setTaxDataAustralia, setTaxDataGermany, setTaxDataFrance, setTaxDataBrazil, setTaxDataSouthAfrica]);
 
   const memoizedExpenseData = useMemo(() => {
     return expenseData;
@@ -654,7 +654,7 @@ const Index = () => {
       const estimatedExpenses = estimateExpenses(salaryData.country, salaryData.city, salaryData.grossSalary);
       setExpenseData(estimatedExpenses);
     }
-  }, [debouncedSalaryData.country, debouncedSalaryData.city, debouncedSalaryData.grossSalary]);
+  }, [debouncedSalaryData.country, debouncedSalaryData.city, debouncedSalaryData.grossSalary, salaryData.country, salaryData.city, salaryData.grossSalary]);
 
   // Auto-detect country/currency if not set
   useEffect(() => {
@@ -697,7 +697,7 @@ const Index = () => {
         }));
       }
     }
-  }, [salaryData.country, salaryData.countryCode]);
+  }, [salaryData.country, salaryData.countryCode, salaryData.currency]);
 
   // Load saved preferences from localStorage on mount
   useEffect(() => {
@@ -790,7 +790,7 @@ const Index = () => {
       const { data } = await UserDataService.getUserDataByType(user.id, 'tax_calculation');
       if (data && data.length > 0) {
         // Find calculation with similar data
-        const similar = data.find((calc: any) => {
+        const similar = data.find((calc: { dataContent: unknown }) => {
           const existing = calc.dataContent as ExtendedTaxCalculationData;
           return (
             existing.country === salaryData.country &&
@@ -1347,6 +1347,7 @@ const Index = () => {
                     salaryData={salaryData}
                     taxData={memoizedTaxData}
                     expenseData={memoizedExpenseData}
+                    onHabitChange={setExpenseData}
                   />
                 </div>
               ) : (

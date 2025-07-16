@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -212,7 +212,7 @@ const MobileIndex = () => {
   const hasCalculation = currentTaxData.totalTax > 0 && salaryData.grossSalary > 0;
 
   // Load saved calculations
-  const loadSavedCalculations = async () => {
+  const loadSavedCalculations = useCallback(async () => {
     if (!user) return;
     
     setIsLoadingSavedCalculations(true);
@@ -225,10 +225,16 @@ const MobileIndex = () => {
           variant: "destructive",
         });
       } else {
-        const calculations = data?.map((item: any) => ({
+        const calculations = data?.map((item: { 
+          id: string; 
+          dataName: string; 
+          dataContent: unknown; 
+          createdAt: Date; 
+          updatedAt: Date; 
+        }) => ({
           id: item.id,
-          data_name: item.data_name,
-          data_content: item.data_content as unknown as {
+          data_name: item.dataName,
+          data_content: item.dataContent as unknown as {
             country: string;
             currency: string;
             salary: number;
@@ -246,8 +252,8 @@ const MobileIndex = () => {
             };
           },
           is_favorite: false,
-          created_at: item.created_at || '',
-          updated_at: item.updated_at || ''
+          created_at: item.createdAt.toISOString(),
+          updated_at: item.updatedAt.toISOString()
         })) || [];
         
         setSavedCalculations(calculations);
@@ -261,7 +267,7 @@ const MobileIndex = () => {
     } finally {
       setIsLoadingSavedCalculations(false);
     }
-  };
+  }, [user, toast]);
 
   const loadCalculation = (calculation: LoadCalculationModalSavedCalculation) => {
     const content = calculation.data_content;
@@ -475,7 +481,7 @@ const MobileIndex = () => {
     if (user) {
       loadSavedCalculations();
     }
-  }, [user]);
+  }, [user, loadSavedCalculations]);
 
   return (
     <MobileLayout title="Financial Assistant">
@@ -590,6 +596,7 @@ const MobileIndex = () => {
             salaryData={salaryData}
             taxData={currentTaxData}
             expenseData={expenseData}
+            onHabitChange={setExpenseData}
           />
         </TabsContent>
       </Tabs>

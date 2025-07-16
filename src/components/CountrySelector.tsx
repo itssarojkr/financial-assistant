@@ -73,6 +73,37 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
     fetchCountries();
   }, []);
 
+  // Load dependent data when salaryData is already populated (e.g., from saved calculation)
+  useEffect(() => {
+    if (salaryData.country && !states.length) {
+      // Find the country by name and fetch its states
+      const country = countries.find(c => c.name === salaryData.country);
+      if (country) {
+        fetchStates(country.id);
+      }
+    }
+  }, [salaryData.country, countries, states.length]);
+
+  useEffect(() => {
+    if (salaryData.state && !cities.length) {
+      // Find the state by name and fetch its cities
+      const state = states.find(s => s.name === salaryData.state);
+      if (state) {
+        fetchCities(state.id);
+      }
+    }
+  }, [salaryData.state, states, cities.length]);
+
+  useEffect(() => {
+    if (salaryData.city && !localities.length) {
+      // Find the city by name and fetch its localities
+      const city = cities.find(c => c.name === salaryData.city);
+      if (city) {
+        fetchLocalities(city.id);
+      }
+    }
+  }, [salaryData.city, cities, localities.length]);
+
   const fetchCountries = async () => {
     setLoading(true);
     try {
@@ -227,7 +258,10 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
         <p className="text-sm text-muted-foreground mb-2">
           Only countries with implemented tax calculators are shown
         </p>
-        <Select onValueChange={handleCountryChange}>
+        <Select 
+          value={countries.find(c => c.name === salaryData.country)?.id.toString() || ''} 
+          onValueChange={handleCountryChange}
+        >
           <SelectTrigger id="country">
             <SelectValue placeholder="Select a country" />
           </SelectTrigger>
@@ -245,7 +279,10 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
         <>
           <div>
             <Label htmlFor="state">State</Label>
-            <Select onValueChange={handleStateChange}>
+            <Select 
+              value={states.find(s => s.name === salaryData.state)?.id.toString() || ''} 
+              onValueChange={handleStateChange}
+            >
               <SelectTrigger id="state">
                 <SelectValue placeholder="Select a state" />
               </SelectTrigger>
@@ -262,7 +299,10 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
           {salaryData.state && (
             <div>
               <Label htmlFor="city">City</Label>
-              <Select onValueChange={handleCityChange}>
+              <Select 
+                value={cities.find(c => c.name === salaryData.city)?.id.toString() || ''} 
+                onValueChange={handleCityChange}
+              >
                 <SelectTrigger id="city">
                   <SelectValue placeholder="Select a city" />
                 </SelectTrigger>
@@ -280,7 +320,10 @@ const CountrySelector: React.FC<CountrySelectorProps> = ({ salaryData, setSalary
           {salaryData.city && (
             <div>
               <Label htmlFor="locality">Locality</Label>
-              <Select onValueChange={handleLocalityChange}>
+              <Select 
+                value={localities.find(l => l.name === salaryData.locality)?.id.toString() || ''} 
+                onValueChange={handleLocalityChange}
+              >
                 <SelectTrigger id="locality">
                   <SelectValue placeholder="Select a locality" />
                 </SelectTrigger>

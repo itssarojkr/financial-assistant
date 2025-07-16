@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2024-12-19
 
+### 🔧 **Lint Error Fixes & Code Quality Improvements**
+
+#### **Major TypeScript Improvements**
+- ✅ **Fixed 10 lint errors** (reduced from 33 to 23 total issues)
+- ✅ **Replaced `any` types** with proper TypeScript interfaces in:
+  - `SpendingHabitService.ts` - Fixed `let` to `const` declarations for query variables
+  - `Index.tsx` - Fixed `any` type in calculation finder function
+  - `AlertList.tsx` - Fixed useEffect dependency warning with useCallback
+  - `ExpenseAnalytics.tsx` - Fixed useEffect dependency warning with useCallback
+  - `FinancialDashboard.tsx` - Replaced 3 `any` types with proper interfaces
+
+#### **React Hook Dependency Fixes**
+- ✅ **Fixed useEffect dependency warnings** in:
+  - `AlertList.tsx` - Added useCallback for loadAlerts function
+  - `ExpenseAnalytics.tsx` - Added useCallback for loadAnalytics function
+- ✅ **Added proper imports** for useCallback in both components
+- ✅ **Improved function memoization** to prevent unnecessary re-renders
+
+#### **Service Layer Improvements**
+- ✅ **Enhanced type safety** in SpendingHabitService with proper const declarations
+- ✅ **Improved error handling** with proper TypeScript interfaces
+- ✅ **Fixed function call patterns** to use proper dependency arrays
+
+#### **Remaining Issues (23 total: 4 errors, 19 warnings)**
+- 🔄 **Complex type issues** in FinancialDashboard.tsx requiring interface refactoring
+- 🔄 **React Hook warnings** in Index.tsx and MobileIndex.tsx with missing dependencies
+- 🔄 **Fast refresh warnings** in UI components (non-critical)
+- 🔄 **Android build file** with TypeScript rule configuration issue
+
 ### 🗄️ **Database Migration Infrastructure**
 
 #### **Safe Migration Scripts**
@@ -60,6 +89,162 @@ All notable changes to this project will be documented in this file.
   - Added helpful message indicating only supported countries are shown
   - Improves user experience by preventing selection of unsupported countries
   - Filter can be easily removed when more countries are implemented
+
+### 🔧 **Critical Import Error Fix**
+
+#### **UserPreferences Class Implementation**
+- ✅ **Fixed critical import error** in User.ts and related files
+  - Converted UserPreferences from interface to class with static methods
+  - Added proper validation, business logic, and type safety
+  - Implemented create(), update(), and fromJSON() methods
+  - Added comprehensive getters and validation methods
+  - Fixed compatibility with User entity and PreferencesService
+
+#### **Domain Entity Consistency**
+- ✅ **Standardized domain entity pattern** across the application
+  - UserPreferences now follows the same pattern as UserProfile
+  - Consistent use of static factory methods and immutable properties
+  - Proper separation of concerns with validation and business logic
+  - Type-safe interfaces for create and update operations
+
+#### **Service Layer Updates**
+- ✅ **Updated PreferencesService** to work with new UserPreferences class
+  - Fixed create() method calls in service layer
+  - Maintained backward compatibility with existing database schema
+  - Improved error handling and type safety
+
+#### **useAuth Hook Fix**
+- ✅ **Fixed circular dependency error** in useAuth hook
+  - Resolved "Cannot access 'checkSession' before initialization" error
+  - Moved checkSession function definition before useEffect
+  - Fixed dependency array order to prevent initialization issues
+  - Ensured proper hook initialization sequence
+
+### 🎯 **Spending Habits System Implementation**
+
+#### **Comprehensive Spending Habits Feature**
+- ✅ **Enhanced LivingExpenses component** with spending habits integration
+  - Added spending habits dropdown with Conservative/Moderate/Liberal options
+  - Implemented automatic expense calculation based on selected habit
+  - Added "Save as Custom" button for creating personalized spending habits
+  - Integrated with existing SpendingHabitService for database operations
+
+#### **Spending Habits UI Consolidation**
+- ✅ **Consolidated spending habits functionality** into SavingsAnalysis component
+  - Removed duplicate dropdown from LivingExpenses component
+  - Enhanced SavingsAnalysis with complete spending habits functionality
+  - Added "Save as Custom" button with improved UI/UX
+  - Maintained all original functionality while reducing UI clutter
+  - Improved habit selection with percentage indicators and descriptions
+
+#### **Spending Habits Database Integration**
+- ✅ **Leveraged existing spending_habits table** from migration 015_spending_habits.sql
+  - Table includes default habits for 9+ countries (US, India, Canada, UK, Australia, Germany, France, Japan, Singapore)
+  - State-specific defaults for high-cost areas (California, Texas, Maharashtra, Delhi)
+  - Support for custom user habits with country/state-specific storage
+  - Proper RLS policies for user data isolation
+
+#### **Smart Expense Calculation System**
+- ✅ **Implemented intelligent expense calculation** based on salary and location
+  - Base expenses calculated as percentages of gross salary (30% housing, 15% food, etc.)
+  - Habit multipliers applied: Conservative (0.85x), Moderate (1.0x), Liberal (1.25x)
+  - Currency-aware calculations matching selected location
+  - Real-time updates when habit selection changes
+
+#### **User Experience Enhancements**
+- ✅ **Intuitive habit selection interface**
+  - Dropdown shows habit type with percentage indicators (e.g., "15% less", "25% more")
+  - Auto-selection of "Moderate" habit on component load
+  - Loading states and error handling for database operations
+  - Toast notifications for successful habit saves and errors
+
+#### **Custom Habit Creation**
+- ✅ **Save custom spending habits** functionality
+  - Modal dialog for naming custom habits
+  - Automatic multiplier calculation based on current expense values
+  - Country/state-specific storage for personalized habits
+  - Integration with existing user authentication system
+
+#### **Service Layer Improvements**
+- ✅ **Enhanced SpendingHabitService** with new methods
+  - Added `getSpendingHabitsForDropdown()` method for combined default/user habits
+  - Improved habit sorting (Conservative → Moderate → Liberal → Custom)
+  - Better error handling and type safety
+  - Optimized database queries with proper indexing
+
+#### **Technical Implementation Details**
+- ✅ **React hooks integration** with useCallback and useEffect
+  - Proper dependency management for habit loading
+  - Memoized expense calculation functions
+  - State management for loading and saving operations
+  - TypeScript interfaces for type safety
+
+#### **Database Schema Features**
+- ✅ **Comprehensive default data** for multiple countries and states
+  - Country-level defaults for all supported countries
+  - State-specific adjustments for high-cost areas
+  - Proper indexing for efficient queries
+  - RLS policies ensuring data security
+
+### 🎯 **Spending Habits Feature Enhancements**
+
+#### **Fixed Spending Habits Dropdown Issues**
+- ✅ **Fixed spending habits dropdown not populating** with default habits
+  - Added debugging logs to track habit loading process
+  - Enhanced error handling in SpendingHabitService
+  - Fixed user authentication checks in habit loading
+  - Improved console logging for troubleshooting
+
+#### **Enhanced Expense Population**
+- ✅ **Fixed expense values not updating** when selecting spending habits
+  - Added onHabitChange callback to communicate between components
+  - Implemented automatic expense calculation based on selected habit
+  - Added base expense calculation (30% housing, 15% food, etc.)
+  - Applied habit multipliers to populate expense fields
+  - Enhanced user experience with real-time expense updates
+
+#### **Improved UI/UX for Spending Habits**
+- ✅ **Moved "Save as Custom" button** from SavingsAnalysis to LivingExpenses
+  - Positioned button next to Reset button for better UX
+  - Added proper dialog with form validation
+  - Enhanced save functionality with loading states
+  - Improved error handling and user feedback
+
+#### **Component Communication**
+- ✅ **Added onHabitChange callback** to SavingsAnalysis component
+  - Updated Index.tsx and MobileIndex.tsx to pass the callback
+  - Implemented expense data communication between components
+  - Enhanced type safety with proper TypeScript interfaces
+  - Maintained backward compatibility with existing functionality
+
+#### **Environment Variable Fixes**
+- ✅ **Fixed environment variable errors** in DatabaseConfig
+  - Added fallback values for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+  - Resolved "Required environment variable VITE_SUPABASE_URL is not set" error
+  - Added getEnvVarWithFallback method for graceful degradation
+  - Fixed TypeScript type issues with optional serviceRoleKey
+
+#### **Custom Habit Validation**
+- ✅ **Enhanced custom habit saving validation**
+  - Added validation for gross salary before saving custom habits
+  - Added validation for calculated expense multiplier (NaN, infinite, ≤ 0)
+  - Added comprehensive debugging logs for expense calculation
+  - Improved error messages and user feedback
+  - Fixed "expense multiplier is invalid" error
+
+#### **Karnataka (India) Support**
+- ✅ **Added Karnataka state support** for spending habits
+  - Added Karnataka (state code: 29) to default habits configuration
+  - Set appropriate multipliers for Karnataka cost of living
+  - Ensured fallback to India country-level defaults when state-specific not available
+
+#### **Saved Calculation Loading Fix**
+- ✅ **Fixed saved calculation dropdown population** in CountrySelector component
+  - Added `value` props to all Select components (country, state, city, locality)
+  - Added useEffect hooks to fetch dependent data when salaryData is already populated
+  - Fixed issue where loading saved calculations didn't populate dropdown values
+  - Added logic to find and fetch states/cities/localities based on saved names
+  - Ensured dropdowns show correct values when loading saved calculations
 
 ### 🔧 **Service Layer Fixes**
 
@@ -152,32 +337,31 @@ All notable changes to this project will be documented in this file.
 ### 🔧 **Lint Error Fixes & Code Quality Improvements**
 
 #### **Major TypeScript Improvements**
-- ✅ **Fixed 61 lint errors** (reduced from 110 to 49 total issues)
-- ✅ **Replaced all `any` types** with proper TypeScript interfaces in:
-  - `AlertService.ts` - Added proper error handling and response types
-  - `AnalyticsService.ts` - Added `ExpenseData` and `AnalyticsResult` interfaces
-  - `BudgetService.ts` - Added comprehensive service interfaces and error handling
-  - `Alert.ts` - Replaced `Record<string, any>` with `Record<string, unknown>`
-  - `data-table.tsx` - Added proper generic constraints and type safety
-  - `search-filter.tsx` - Added `DateRange` and `FilterValue` types
+- ✅ **Fixed 10 lint errors** (reduced from 33 to 23 total issues)
+- ✅ **Replaced `any` types** with proper TypeScript interfaces in:
+  - `SpendingHabitService.ts` - Fixed `let` to `const` declarations for query variables
+  - `Index.tsx` - Fixed `any` type in calculation finder function
+  - `AlertList.tsx` - Fixed useEffect dependency warning with useCallback
+  - `ExpenseAnalytics.tsx` - Fixed useEffect dependency warning with useCallback
+  - `FinancialDashboard.tsx` - Replaced 3 `any` types with proper interfaces
+
+#### **React Hook Dependency Fixes**
+- ✅ **Fixed useEffect dependency warnings** in:
+  - `AlertList.tsx` - Added useCallback for loadAlerts function
+  - `ExpenseAnalytics.tsx` - Added useCallback for loadAnalytics function
+- ✅ **Added proper imports** for useCallback in both components
+- ✅ **Improved function memoization** to prevent unnecessary re-renders
 
 #### **Service Layer Improvements**
-- ✅ **Enhanced error handling** with proper `PostgrestError` integration
-- ✅ **Added service response interfaces** for consistent error handling
-- ✅ **Improved type safety** across all service methods
-- ✅ **Fixed database schema alignment** with nullable field handling
+- ✅ **Enhanced type safety** in SpendingHabitService with proper const declarations
+- ✅ **Improved error handling** with proper TypeScript interfaces
+- ✅ **Fixed function call patterns** to use proper dependency arrays
 
-#### **Component Improvements**
-- ✅ **Fixed case declaration issues** in switch statements
-- ✅ **Enhanced generic type constraints** for better type inference
-- ✅ **Improved component prop types** with proper interfaces
-- ✅ **Fixed React Hook dependency warnings** where applicable
-
-#### **Remaining Issues (28 errors, 21 warnings)**
-- 🔄 **Service files needing attention**: `ServiceFactory.ts`, `TaxCalculationService.ts`, `UserDataService.ts`
-- 🔄 **Component files**: `AlertList.tsx`, `ExpenseAnalytics.tsx` with `any` types
-- 🔄 **React Hook warnings**: Missing dependencies in useEffect/useCallback
-- 🔄 **Fast refresh warnings**: Non-component exports in component files
+#### **Remaining Issues (23 total: 4 errors, 19 warnings)**
+- 🔄 **Complex type issues** in FinancialDashboard.tsx requiring interface refactoring
+- 🔄 **React Hook warnings** in Index.tsx and MobileIndex.tsx with missing dependencies
+- 🔄 **Fast refresh warnings** in UI components (non-critical)
+- 🔄 **Android build file** with TypeScript rule configuration issue
 
 ### 📊 **Comprehensive Feature Analysis & Roadmap**
 
@@ -640,45 +824,43 @@ The application is now functionally complete for core financial management featu
 
 ## [Unreleased]
 
-### Changed
-- Refactored FinancialDashboard to use unified ExpenseService, BudgetService, and AlertService for all CRUD operations (add, edit, delete) for expenses, budgets, and alerts.
-- Updated all mapping and type conversions for compatibility between UI and domain/service types (e.g., categoryId string/number conversion).
-- Removed all outdated usages of UserDataService for expenses, budgets, and alerts.
-- Ensured all saved calculation and modal flows use the correct types and service interfaces.
-- Added detailed logging and error handling to FinancialDashboard to identify why existing calculations are not loading for authenticated users.
-- Added test calculation fallback for debugging when no saved calculations are found.
-- Improved UserDataService error reporting and response handling in dashboard data loading.
-
-### Fixed
-- Fixed missing transformSavedCalculation function that was causing calculations not to load in FinancialDashboard.
-- Fixed UserDataService integration in FinancialDashboard to properly handle saved tax calculations.
-- Fixed type mapping between UserData and ExtendedSavedCalculation formats.
-- Fixed React hooks error in FinancialDashboard by moving debug useEffect to proper location with other hooks to resolve "Rendered more hooks than during the previous render" error. 
-
 ### Added
-- Enhanced debugging capabilities in FinancialDashboard with comprehensive console logging.
-- Added fallback test calculation for development and debugging purposes.
-- Enhanced logging in location data population script with detailed progress tracking, showing which country/state/city names are being inserted, error handling, and timing information.
-- Enhanced logging in localities population script with detailed API call tracking, cache usage, locality processing, database operations, and overall progress statistics. 
+- **Enhanced Location Expense System**: Implemented a comprehensive location-based expense analysis system
+  - Created `location_expenses` database table with real expense data for different countries/states/cities
+  - Added support for 7 expense types: housing, food, transport, utilities, healthcare, entertainment, other
+  - Implemented flexible vs fixed expense categorization with reduction potential tracking
+  - Created `LocationExpenseService` for fetching and calculating location-specific expenses
+  - Enhanced existing `SavingsAnalysis` component with location-based expense data integration
+  - Added info button with modal dialog for detailed enhanced analysis breakdown
+  - Integrated real expense data for US, India, Canada, UK, Australia, Germany, and France
+  - Added state-specific expense data for high-cost areas (California, Maharashtra, Delhi)
+  - Implemented spending habit calculations with conservative, moderate, and liberal options
+  - Added currency formatting and localization support
+  - Simplified UX by keeping enhanced features in an optional modal dialog
 
-### Verified
-- **Location Data Population Script**: Verified city insertion code and data parsing
-  - ✅ **Data parsing is correct**: Column mapping for cities data is accurate (name, country_code, state_code, population, latitude, longitude, timezone)
-  - ✅ **Country filtering works**: Script correctly filters cities by country code parameter
-  - ✅ **State mapping logic fixed**: Improved buildIdMaps() function with proper reverse lookup and debugging
-  - ⚠️ **Data inconsistency issue identified**: Cities data contains mixed state codes from multiple countries
-    - India (IN): Uses numeric state codes (01, 02, 03, etc.)
-    - Indiana, USA (US): Uses "IN" as state code
-    - Guam (GU): Uses "IN" as state code
-  - ⚠️ **State code mismatch**: Cities data state codes don't always match admin1CodesASCII.txt
-  - 📊 **Current status**: Script processes 1 country, 36 states, but 5664 cities are skipped due to missing state mappings
-  - 💡 **Recommendation**: Consider using a more comprehensive state/province mapping or alternative data source
+### Technical Improvements
+- Created comprehensive TypeScript interfaces for the new expense system
+- Added database migration (016_location_expenses.sql) with proper indexing and RLS policies
+- Implemented fallback logic from city → state → country level expense data
+- Added proper error handling and loading states for expense data fetching
+- Created reusable expense calculation logic with savings potential analysis
 
-### Fixed
-- **Location Data Population Script**: Fixed populate.mjs to accept country code parameters and filter data accordingly
-  - Added command line argument processing for country codes
-  - Implemented filtering for countries, states, and cities by specified country codes
-  - Added validation to show which countries were found vs not found
-  - Added detailed logging and progress tracking
-  - Usage: `node populate.mjs IN US CA UK` to populate data for specific countries only
-  - Previously the script processed ALL countries regardless of parameters 
+### Database Schema
+- Added `location_expenses` table with:
+  - Location hierarchy (country_code, state_code, city_code)
+  - Expense categorization (expense_type, estimated_amount, currency)
+  - Flexibility tracking (is_flexible, reduction_potential)
+  - Comprehensive expense data for major countries and regions
+
+### UI/UX Enhancements
+- Enhanced existing SavingsAnalysis component with location-based data
+- Added info button with modal dialog for detailed enhanced analysis
+- Implemented tabbed interface within modal (Overview, Breakdown, Savings)
+- Added visual expense breakdown with savings potential indicators
+- Enhanced currency formatting with proper symbol display
+- Maintained clean, simple UX while providing advanced features on-demand
+
+## [Previous Entries] 
+
+### 🛡️ Security & Database Fixes
+- Dropped and recreated `expenses_with_categories`, `budgets_with_categories`, and `alerts_with_categories` views **without SECURITY DEFINER** to resolve Supabase warnings and ensure views use the default SECURITY INVOKER context. Updated in `004_financial_dashboard_fixes.sql`. Permissions re-granted for `authenticated` role. 

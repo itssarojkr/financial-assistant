@@ -50,11 +50,21 @@ import { AlertForm } from '@/components/alerts/AlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { ExtendedSavedCalculation, TaxCalculationData, ExistingCalculation } from '@/shared/types/common.types';
 
+// Define interfaces for service data
+interface ServiceUserData {
+  id: string;
+  dataName: string;
+  dataContent: unknown;
+  isFavorite: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Define transformSavedCalculation function
-const transformSavedCalculation = (userData: any): ExtendedSavedCalculation => ({
+const transformSavedCalculation = (userData: ServiceUserData): ExtendedSavedCalculation => ({
   id: userData.id,
   data_name: userData.dataName,
-  data_content: userData.dataContent as TaxCalculationData,
+  data_content: userData.dataContent,
   is_favorite: userData.isFavorite,
   created_at: userData.createdAt.toISOString(),
   updated_at: userData.updatedAt.toISOString(),
@@ -130,8 +140,69 @@ interface FinancialDashboardProps {
   countryCurrency?: string;
 }
 
+// Define service data interfaces
+interface ServiceExpense {
+  id?: string;
+  amount: number;
+  description: string | null;
+  categoryId?: number | string | null;
+  date: string;
+  location?: string | null;
+  source?: string | null;
+  currency?: string;
+  calculationId?: string;
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  } | null;
+}
+
+interface ServiceBudget {
+  id?: string;
+  amount: number;
+  categoryId?: number | string | null;
+  period?: 'monthly' | 'yearly';
+  currency?: string;
+  calculationId?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  } | null;
+}
+
+interface ServiceAlert {
+  id?: string;
+  threshold: number;
+  categoryId?: number | string | null;
+  type?: 'percentage' | 'amount';
+  severity?: 'low' | 'medium' | 'high';
+  active?: boolean;
+  currency?: string;
+  calculationId?: string;
+  period?: string;
+  createdAt?: string | null;
+  updatedAt?: string;
+  expenseCategories?: {
+    id: number;
+    name: string;
+    icon: string | null;
+    color: string | null;
+  } | null;
+  categoryName?: string;
+}
+
 // Type mapping functions to convert between service and local interfaces
-const mapServiceExpenseToLocal = (serviceExpense: any): Expense => ({
+const mapServiceExpenseToLocal = (serviceExpense: ServiceExpense): Expense => ({
   id: serviceExpense.id,
   amount: serviceExpense.amount,
   description: serviceExpense.description,
@@ -146,7 +217,7 @@ const mapServiceExpenseToLocal = (serviceExpense: any): Expense => ({
   expenseCategories: serviceExpense.expenseCategories,
 });
 
-const mapServiceBudgetToLocal = (serviceBudget: any): Budget => ({
+const mapServiceBudgetToLocal = (serviceBudget: ServiceBudget): Budget => ({
   id: serviceBudget.id,
   amount: serviceBudget.amount,
   categoryId: serviceBudget.categoryId !== undefined && serviceBudget.categoryId !== null && !isNaN(Number(serviceBudget.categoryId)) ? Number(serviceBudget.categoryId) : null,
@@ -160,7 +231,7 @@ const mapServiceBudgetToLocal = (serviceBudget: any): Budget => ({
   expenseCategories: serviceBudget.expenseCategories,
 });
 
-const mapServiceAlertToLocal = (serviceAlert: any): Alert => ({
+const mapServiceAlertToLocal = (serviceAlert: ServiceAlert): Alert => ({
   id: serviceAlert.id,
   threshold: serviceAlert.threshold,
   categoryId: serviceAlert.categoryId !== undefined && serviceAlert.categoryId !== null && !isNaN(Number(serviceAlert.categoryId)) ? Number(serviceAlert.categoryId) : null,
@@ -1105,7 +1176,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const handleEditExpense = async (expenseId: string, updates: Partial<Expense>) => {
     try {
       // Convert categoryId to string if present, and description to string
-      const updatePayload: any = { ...updates };
+      const updatePayload: Partial<ServiceExpense> = { ...updates };
       if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
         updatePayload.categoryId = String(updatePayload.categoryId);
       }
@@ -1140,7 +1211,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
   const handleEditBudget = async (budgetId: string, updates: Partial<Budget>) => {
     try {
       // Convert categoryId to string if present
-      const updatePayload: any = { ...updates };
+      const updatePayload: Partial<ServiceBudget> = { ...updates };
       if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
         updatePayload.categoryId = String(updatePayload.categoryId);
       }
@@ -1173,7 +1244,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ userId, 
 
   const handleEditAlert = async (alertId: string, updates: Partial<Alert>) => {
     try {
-      const updatePayload: any = { ...updates };
+      const updatePayload: Partial<ServiceAlert> = { ...updates };
       if (updatePayload.categoryId !== undefined && updatePayload.categoryId !== null) {
         updatePayload.categoryId = String(updatePayload.categoryId);
       }

@@ -4,6 +4,15 @@ import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ServiceFactory } from '@/application/services/ServiceFactory';
+
+(async () => {
+  try {
+    await ServiceFactory.getInstance().initialize();
+  } catch (error) {
+    console.error('Failed to initialize ServiceFactory:', error);
+  }
+})();
 
 // Pages (code split)
 const Landing = lazy(() => import('@/pages/Landing'));

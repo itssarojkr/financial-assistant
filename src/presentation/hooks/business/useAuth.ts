@@ -16,11 +16,6 @@ export const useAuth = () => {
   const [error, setError] = useState<string | null>(null);
   const { getUserById, createUser } = useUserService();
 
-  // Check for existing session on mount
-  useEffect(() => {
-    checkSession();
-  }, [checkSession]);
-
   /**
    * Checks if user has an active session
    */
@@ -50,6 +45,11 @@ export const useAuth = () => {
       setIsLoading(false);
     }
   }, [getUserById]);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   /**
    * Logs in a user

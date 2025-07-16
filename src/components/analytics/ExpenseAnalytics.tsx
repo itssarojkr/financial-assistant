@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -67,13 +67,7 @@ export function ExpenseAnalytics({ className }: ExpenseAnalyticsProps) {
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
 
-  useEffect(() => {
-    if (user) {
-      loadAnalytics();
-    }
-  }, [user, selectedPeriod]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -97,7 +91,13 @@ export function ExpenseAnalytics({ className }: ExpenseAnalyticsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadAnalytics();
+    }
+  }, [user, selectedPeriod, loadAnalytics]);
 
   const getTrendColor = (trend: string) => {
     switch (trend) {

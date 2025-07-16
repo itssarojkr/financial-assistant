@@ -94,14 +94,15 @@ export class DatabaseConfig {
    * Loads configuration from environment variables
    */
   private loadConfig(): DatabaseConfigOptions {
-    const url = this.getRequiredEnvVar('VITE_SUPABASE_URL');
-    const anonKey = this.getRequiredEnvVar('VITE_SUPABASE_ANON_KEY');
+    // Use environment variables if available, otherwise use hardcoded values
+    const url = this.getEnvVarWithFallback('VITE_SUPABASE_URL', 'https://legeedxixsmtenquuxza.supabase.co');
+    const anonKey = this.getEnvVarWithFallback('VITE_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlZ2VlZHhpeHNtdGVucXV1eHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1Mjk2MDQsImV4cCI6MjA2NzEwNTYwNH0.ZpVntuKx0rHyVHzilDzcZQPrgdrOcHAzB7DE5tGO88A');
     const serviceRoleKey = this.getOptionalEnvVar('VITE_SUPABASE_SERVICE_ROLE_KEY');
 
-    return {
+    const config: DatabaseConfigOptions = {
       url,
       anonKey,
-      serviceRoleKey,
+      ...(serviceRoleKey && { serviceRoleKey }),
       auth: {
         autoRefreshToken: true,
         persistSession: true,
@@ -118,6 +119,8 @@ export class DatabaseConfig {
         },
       },
     };
+
+    return config;
   }
 
   /**
@@ -129,6 +132,14 @@ export class DatabaseConfig {
       throw new Error(`Required environment variable ${name} is not set`);
     }
     return value;
+  }
+
+  /**
+   * Gets an environment variable with a fallback value
+   */
+  private getEnvVarWithFallback(name: string, fallback: string): string {
+    const value = import.meta.env[name];
+    return value || fallback;
   }
 
   /**

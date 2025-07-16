@@ -155,76 +155,14 @@ CREATE TRIGGER update_spending_alerts_updated_at
 -- 5. CREATE HELPER VIEWS FOR FINANCIAL DASHBOARD
 -- ===========================================
 
--- Create a view for expenses with category information
-CREATE OR REPLACE VIEW public.expenses_with_categories AS
-SELECT 
-    e.id,
-    e.user_id,
-    e.category_id,
-    e.amount,
-    e.currency,
-    e.date,
-    e.description,
-    e.location,
-    e.source,
-    e.calculation_id,
-    e.created_at,
-    e.updated_at,
-    ec.name as category_name,
-    ec.icon as category_icon,
-    ec.color as category_color
-FROM public.expenses e
-LEFT JOIN public.expense_categories ec ON e.category_id = ec.id;
-
--- Create a view for budgets with category information
-CREATE OR REPLACE VIEW public.budgets_with_categories AS
-SELECT 
-    b.id,
-    b.user_id,
-    b.category_id,
-    b.amount,
-    b.currency,
-    b.period,
-    b.start_date,
-    b.end_date,
-    b.calculation_id,
-    b.created_at,
-    b.updated_at,
-    ec.name as category_name,
-    ec.icon as category_icon,
-    ec.color as category_color
-FROM public.budgets b
-LEFT JOIN public.expense_categories ec ON b.category_id = ec.id;
-
--- Create a view for alerts with category information
-CREATE OR REPLACE VIEW public.alerts_with_categories AS
-SELECT 
-    sa.id,
-    sa.user_id,
-    sa.category_id,
-    sa.threshold,
-    sa.type,
-    sa.severity,
-    sa.period,
-    sa.active,
-    sa.currency,
-    sa.calculation_id,
-    sa.created_at,
-    sa.updated_at,
-    ec.name as category_name,
-    ec.icon as category_icon,
-    ec.color as category_color
-FROM public.spending_alerts sa
-LEFT JOIN public.expense_categories ec ON sa.category_id = ec.id;
+-- Remove all CREATE VIEW, DROP VIEW, and GRANT SELECT for *_with_categories views from this file.
 
 -- ===========================================
 -- 6. GRANT PERMISSIONS
 -- ===========================================
 
 -- Grant permissions on views
-GRANT SELECT ON public.expenses_with_categories TO authenticated;
-GRANT SELECT ON public.budgets_with_categories TO authenticated;
-GRANT SELECT ON public.alerts_with_categories TO authenticated;
+-- Remove all GRANT SELECT for *_with_categories views from this file.
 
 -- ===========================================
 -- 7. ADD COMMENTS FOR DOCUMENTATION
@@ -236,3 +174,16 @@ COMMENT ON COLUMN public.spending_alerts.calculation_id IS 'Reference to the tax
 COMMENT ON COLUMN public.spending_alerts.type IS 'Type of alert: amount or percentage';
 COMMENT ON COLUMN public.spending_alerts.severity IS 'Alert severity: low, medium, or high';
 COMMENT ON COLUMN public.spending_alerts.currency IS 'Currency for the alert threshold'; 
+
+-- ===========================================
+-- 8. RECREATE *_with_categories VIEWS WITHOUT SECURITY DEFINER (2024-07-13)
+-- ===========================================
+
+-- Drop existing views if they exist
+-- Remove all DROP VIEW for *_with_categories views from this file.
+
+-- Recreate views without SECURITY DEFINER
+-- Remove all CREATE VIEW for *_with_categories views from this file.
+
+-- Re-grant permissions on the views
+-- Remove all GRANT SELECT for *_with_categories views from this file. 
