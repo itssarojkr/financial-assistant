@@ -9,12 +9,15 @@ CREATE TABLE IF NOT EXISTS public.expense_categories (
     is_default BOOLEAN DEFAULT TRUE
 );
 
+-- Expenses Table
+-- Core expense tracking table
+
 CREATE TABLE IF NOT EXISTS public.expenses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     category_id INTEGER REFERENCES public.expense_categories(id),
     amount NUMERIC(12,2) NOT NULL,
-    currency TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
     date DATE NOT NULL,
     description TEXT,
     location TEXT,
@@ -23,6 +26,11 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add comments for documentation
+COMMENT ON TABLE public.expenses IS 'Stores user expense transactions';
+COMMENT ON COLUMN public.expenses.calculation_id IS 'Reference to the tax calculation this expense belongs to';
+COMMENT ON COLUMN public.expenses.updated_at IS 'Timestamp of last update';
 
 CREATE TABLE IF NOT EXISTS public.budgets (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
